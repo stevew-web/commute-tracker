@@ -422,56 +422,60 @@ async function fetchDelays(from, to, date, auth) {
 
   const results = [];
 
-  // Fetch details for each service (limit to 20 to avoid hammering API)
-  const toFetch = services.slice(0,20);
+  const tocMap = {
+    'GW':'Great Western Railway','GX':'Gatwick Express','SE':'Southeastern',
+    'SN':'Southern','TL':'Thameslink','LM':'West Midlands Trains',
+    'VT':'Avanti West Coast','XC':'CrossCountry','EM':'East Midlands Railway',
+    'AW':'Transport for Wales','SR':'ScotRail','HX':'Heathrow Express',
+    'CC':'c2c','CS':'Caledonian Sleeper','GC':'Grand Central',
+    'HT':'Hull Trains','IL':'Island Line','LD':'Lumo',
+    'LE':'Greater Anglia','LO':'London Overground','LT':'London Underground',
+    'ME':'Merseyrail','NT':'Northern','NY':'North Yorkshire Moors Railway',
+    'SW':'South Western Railway','TP':'TransPennine Express','TW':'Tyne & Wear Metro',
+    'ZZ':'Unknown'
+  };
 
-  await Promise.allSettled(toFetch.map(async svc => {
-    try {
-      const rid = svc.serviceAttributesMetrics?.rids?.[0];
-      if (!rid) return;
+  // Fetch details in small batches of 3 to avoid hammering the HSP API
+  const toFetch = services.slice(0, 15);
+  const BATCH = 3;
 
-      const detail = await hspPost('serviceDetails', { rid }, auth);
-      const locs   = detail?.serviceAttributesDetails?.locations || [];
+  for (let i = 0; i < toFetch.length; i += BATCH) {
+    const batch = toFetch.slice(i, i + BATCH);
+    await Promise.allSettled(batch.map(async svc => {
+      try {
+        const rid = svc.serviceAttributesMetrics?.rids?.[0];
+        if (!rid) return;
 
-      const originLoc = locs.find(l => l.location === from);
-      const destLoc   = locs.find(l => l.location === to);
-      if (!originLoc || !destLoc) return;
+        const detail = await hspPost('serviceDetails', { rid }, auth);
+        const locs   = detail?.serviceAttributesDetails?.locations || [];
 
-      const depSched  = originLoc.gbtt_ptd || originLoc.gbtt_pta || '';
-      const arrSched  = destLoc.gbtt_pta   || destLoc.gbtt_ptd   || '';
-      const arrActual = destLoc.actual_ta  || destLoc.actual_td  || arrSched;
+        const originLoc = locs.find(l => l.location === from);
+        const destLoc   = locs.find(l => l.location === to);
+        if (!originLoc || !destLoc) return;
 
-      const delay = diffMins(arrSched, arrActual);
-      if (delay <= 0) return; // on time or early
+        const depSched  = originLoc.gbtt_ptd || originLoc.gbtt_pta || '';
+        const arrSched  = destLoc.gbtt_pta   || destLoc.gbtt_ptd   || '';
+        const arrActual = destLoc.actual_ta  || destLoc.actual_td  || arrSched;
 
-      const jm = diffMins(depSched, arrSched);
-      if (jm <= 0 || jm > 300) return;
+        const delay = diffMins(arrSched, arrActual);
+        if (delay <= 0) return;
 
-      // Map TOC code to name
-      const tocMap = {
-        'GW':'Great Western Railway','GX':'Gatwick Express','SE':'Southeastern',
-        'SN':'Southern','TL':'Thameslink','LM':'West Midlands Trains',
-        'VT':'Avanti West Coast','XC':'CrossCountry','EM':'East Midlands Railway',
-        'AW':'Transport for Wales','SR':'ScotRail','HX':'Heathrow Express',
-        'CC':'c2c','CS':'Caledonian Sleeper','GC':'Grand Central',
-        'HT':'Hull Trains','IL':'Island Line','LD':'Lumo',
-        'LE':'Greater Anglia','LO':'London Overground','LT':'London Underground',
-        'ME':'Merseyrail','NT':'Northern','NY':'North Yorkshire Moors Railway',
-        'SW':'South Western Railway','TP':'TransPennine Express','TW':'Tyne & Wear Metro',
-        'ZZ':'Unknown'
-      };
-      const tocCode = svc.serviceAttributesMetrics?.toc_code || detail?.serviceAttributesDetails?.toc_code || '';
-      const op = tocMap[tocCode] || tocCode || 'Rail Service';
+        const jm = diffMins(depSched, arrSched);
+        if (jm <= 0 || jm > 300) return;
 
-      results.push({
-        dep:       fmt4(depSched),
-        arrSched:  fmt4(arrSched),
-        arrActual: fmt4(arrActual),
-        delayMins: delay,
-        op
-      });
-    } catch(e) { /* skip individual service errors silently */ }
-  }));
+        const tocCode = svc.serviceAttributesMetrics?.toc_code || detail?.serviceAttributesDetails?.toc_code || '';
+        const op = tocMap[tocCode] || tocCode || 'Rail Service';
+
+        results.push({
+          dep:       fmt4(depSched),
+          arrSched:  fmt4(arrSched),
+          arrActual: fmt4(arrActual),
+          delayMins: delay,
+          op
+        });
+      } catch(e) { /* skip individual service errors silently */ }
+    }));
+  }
 
   return results;
 }
