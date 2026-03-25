@@ -1,64 +1,550 @@
-// Cloudflare Worker — HSP API Proxy
-// Paste this into the Cloudflare Worker editor and deploy
-
-export default {
-  async fetch(request, env) {
-
-    // Allow your GitHub Pages domain (update with your actual URL)
-    const ALLOWED_ORIGIN = 'https://stevew-web.github.io';
-
-    // Handle preflight CORS requests
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Access-Control-Max-Age': '86400',
-        }
-      });
-    }
-
-    // Only allow POST
-    if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
-    }
-
-    // Get the target endpoint from the URL path
-    // e.g. /serviceMetrics or /serviceDetails
-    const url = new URL(request.url);
-    const path = url.pathname.replace(/^\//, '');
-
-    const ALLOWED_PATHS = ['serviceMetrics', 'serviceDetails'];
-    if (!ALLOWED_PATHS.includes(path)) {
-      return new Response('Not found', { status: 404 });
-    }
-
-    const targetUrl = `https://hsp-prod.rockshore.net/api/v1/${path}`;
-
-    // Forward the request to HSP
-    const body = await request.text();
-    const auth = request.headers.get('Authorization') || '';
-
-    const hspResponse = await fetch(targetUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': auth,
-      },
-      body: body
-    });
-
-    const responseBody = await hspResponse.text();
-
-    return new Response(responseBody, {
-      status: hspResponse.status,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      }
-    });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Late Trains — Commute Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface2: #f0f2f5;
+    --border: #dde1e9;
+    --text: #1a1f2e;
+    --muted: #7a8399;
+    --accent: #1d6ff2;
+    --red: #e03030;
+    --green: #18a060;
+    --orange: #d96a10;
+    --blue: #1d6ff2;
   }
-};
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  header { display:flex; align-items:baseline; gap:1rem; margin-bottom:2.5rem; }
+
+  h1 {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+  h1 span { color: var(--accent); }
+
+  .tagline {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .card-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+  .dot.ok  { background:var(--green); box-shadow:0 0 5px var(--green); }
+  .dot.err { background:var(--red); }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:0.85rem; }
+  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:0.85rem; align-items:end; }
+
+  @media(max-width:680px){
+    .grid-2 { grid-template-columns:1fr; }
+    .grid-4 { grid-template-columns:1fr 1fr; }
+  }
+
+  .field label {
+    display:block; font-size:0.65rem; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:0.45rem;
+  }
+
+  .field input {
+    width:100%; background:var(--bg); border:1px solid var(--border);
+    color:var(--text); font-family:'DM Mono',monospace; font-size:0.85rem;
+    padding:0.6rem 0.85rem; border-radius:6px; outline:none;
+    transition:border-color .15s, box-shadow .15s; -webkit-appearance:none;
+  }
+  .field input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(29,111,242,.1); }
+
+  .btn {
+    font-family:'Inter',sans-serif; font-size:0.8rem; font-weight:700;
+    letter-spacing:0.05em; border:none; padding:0.65rem 1.4rem;
+    border-radius:6px; cursor:pointer; height:38px; white-space:nowrap;
+    transition:opacity .15s, transform .1s;
+  }
+  .btn:hover { opacity:.85; }
+  .btn:active { transform:scale(.97); }
+  .btn-primary   { background:var(--accent); color:#fff; }
+  .btn-secondary { background:var(--surface2); border:1px solid var(--border); color:var(--text); }
+  .btn-secondary:hover { border-color:var(--accent); opacity:1; }
+
+  .filter-bar { display:flex; align-items:center; gap:0.5rem; margin-bottom:1.25rem; flex-wrap:wrap; }
+  .filter-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
+
+  .pill {
+    background:var(--surface); border:1px solid var(--border); color:var(--muted);
+    font-family:'DM Mono',monospace; font-size:0.72rem; padding:0.3rem 0.8rem;
+    border-radius:20px; cursor:pointer; transition:all .12s;
+  }
+  .pill.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .pill:hover:not(.active) { border-color:var(--accent); color:var(--text); }
+
+  .results-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+  @media(max-width:780px){ .results-grid { grid-template-columns:1fr; } }
+
+  .panel {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.06);
+  }
+
+  .panel-header {
+    padding:1rem 1.25rem; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--surface2);
+  }
+
+  .panel-dir { font-size:0.65rem; font-family:'Inter',sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
+  .panel-route { font-family:'Inter',sans-serif; font-size:1rem; font-weight:700; margin-top:0.15rem; }
+  .panel-badge { font-size:0.65rem; padding:0.2rem 0.55rem; border-radius:4px; background:var(--surface); border:1px solid var(--border); color:var(--muted); }
+
+  .train-card {
+    display:grid; grid-template-columns:26px 1fr auto; gap:0.75rem;
+    align-items:center; padding:0.85rem 1.25rem; border-bottom:1px solid var(--border);
+    transition:background .12s;
+  }
+  .train-card:last-child { border-bottom:none; }
+  .train-card:hover { background:var(--surface2); }
+
+  .rank { font-family:'Inter',sans-serif; font-size:1.1rem; font-weight:800; color:var(--border); text-align:right; }
+  .rank-1 { color:var(--red); }
+  .rank-2 { color:var(--orange); }
+  .rank-3 { color:#c8960c; }
+
+  .train-times { display:flex; align-items:baseline; gap:0.5rem; margin-bottom:0.2rem; flex-wrap:wrap; }
+  .dep { font-size:1rem; font-weight:500; }
+  .sched { font-size:0.72rem; color:var(--muted); }
+  .act-1 { font-size:0.72rem; color:var(--red); font-weight:500; }
+  .act-2 { font-size:0.72rem; color:var(--orange); font-weight:500; }
+  .act-3 { font-size:0.72rem; color:#c8960c; font-weight:500; }
+  .act-n { font-size:0.72rem; color:var(--muted); font-weight:500; }
+
+  .train-meta { font-size:0.65rem; color:var(--muted); }
+  .train-meta .op { color:var(--blue); }
+
+  .delay-badge { text-align:right; }
+  .delay-mins { font-family:'Inter',sans-serif; font-size:1.3rem; font-weight:800; line-height:1; }
+  .dm-1 { color:var(--red); }
+  .dm-2 { color:var(--orange); }
+  .dm-3 { color:#c8960c; }
+  .dm-n { color:var(--muted); }
+  .delay-label { font-size:0.6rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
+
+  .empty { padding:2.5rem 1.5rem; text-align:center; color:var(--muted); font-size:0.78rem; line-height:2; }
+  .empty .icon { font-size:1.8rem; opacity:.35; margin-bottom:.5rem; }
+
+  @keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+  .loader { display:none; padding:2rem; text-align:center; }
+  .loader.on { display:block; }
+  .loader-dots span {
+    display:inline-block; width:6px; height:6px; background:var(--accent);
+    border-radius:50%; margin:0 3px; animation:pulse 1.2s ease infinite;
+  }
+  .loader-dots span:nth-child(2){animation-delay:.2s}
+  .loader-dots span:nth-child(3){animation-delay:.4s}
+
+  .status { font-size:0.65rem; color:var(--muted); margin-bottom:1.25rem; padding-left:.25rem; }
+  .status b { color:var(--accent); font-weight:500; }
+
+  .alert { font-size:0.75rem; padding:.75rem 1rem; border-radius:6px; margin-bottom:1rem; display:none; line-height:1.6; }
+  .alert.on { display:block; }
+  .alert-err  { background:rgba(224,48,48,.08);  border:1px solid rgba(224,48,48,.25);  color:var(--red); }
+  .alert-info { background:rgba(29,111,242,.07); border:1px solid rgba(29,111,242,.2);  color:var(--accent); }
+
+  .creds-note { font-size:0.67rem; color:var(--muted); margin-top:.85rem; line-height:1.7; }
+  .creds-note a { color:var(--accent); text-decoration:none; }
+  .creds-note a:hover { text-decoration:underline; }
+  .creds-note b { color:var(--text); font-weight:500; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Late<span>Trains</span></h1>
+    <div class="tagline">Commute Delay Tracker · National Rail HSP Data</div>
+  </div>
+</header>
+
+<!-- Credentials -->
+<div class="card">
+  <div class="card-title">
+    <div class="dot" id="credDot"></div>
+    <span id="credStatus">National Rail Data Portal — not connected (demo mode)</span>
+  </div>
+  <div class="grid-2">
+    <div class="field">
+      <label>Email address</label>
+      <input type="email" id="nrEmail" placeholder="your@email.com" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="nrPass" placeholder="••••••••" autocomplete="off">
+    </div>
+  </div>
+  <div class="creds-note">
+    Use your <a href="https://opendata.nationalrail.co.uk" target="_blank">opendata.nationalrail.co.uk</a> email &amp; password. Used in-browser only — never stored or sent anywhere except directly to the National Rail HSP API.
+  </div>
+</div>
+
+<!-- Search -->
+<div class="card">
+  <div class="card-title">Journey</div>
+  <div class="grid-4">
+    <div class="field">
+      <label>From (CRS code)</label>
+      <input type="text" id="fromCRS" placeholder="DID" value="DID" maxlength="3" style="text-transform:uppercase">
+    </div>
+    <div class="field">
+      <label>To (CRS code)</label>
+      <input type="text" id="toCRS" placeholder="PAD" value="PAD" maxlength="3" style="text-transform:uppercase">
+    </div>
+    <div class="field">
+      <label>Date (past dates only)</label>
+      <input type="date" id="journeyDate">
+    </div>
+    <button class="btn btn-primary" onclick="search()">Search →</button>
+  </div>
+  <div class="creds-note">
+    3-letter CRS station codes: <b>DID</b> = Didcot Parkway · <b>PAD</b> = London Paddington · <b>RDG</b> = Reading · <b>OXF</b> = Oxford.
+    <a href="https://www.nationalrail.co.uk/stations_destinations/48541.aspx" target="_blank">Full CRS code list →</a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+  <span class="filter-label">Max journey time:</span>
+  <button class="pill active" onclick="setFilter(999,this)">All trains</button>
+  <button class="pill" onclick="setFilter(55,this)">Under 55 min</button>
+  <button class="pill" onclick="setFilter(70,this)">Under 70 min</button>
+  <button class="pill" onclick="setFilter(90,this)">Under 90 min</button>
+</div>
+
+<div class="alert alert-err"  id="errMsg"></div>
+<div class="alert alert-info" id="infoMsg"></div>
+<div class="status" id="statusBar">Showing demo data. Enter credentials above and click Search for real delays.</div>
+
+<div class="results-grid">
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-dir">Outbound ↗</div>
+        <div class="panel-route" id="outRoute">DID → PAD</div>
+      </div>
+      <div class="panel-badge" id="outBadge">Demo</div>
+    </div>
+    <div class="loader" id="outLoader"><div class="loader-dots"><span></span><span></span><span></span></div></div>
+    <div id="outList"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-dir">Return ↙</div>
+        <div class="panel-route" id="retRoute">PAD → DID</div>
+      </div>
+      <div class="panel-badge" id="retBadge">Demo</div>
+    </div>
+    <div class="loader" id="retLoader"><div class="loader-dots"><span></span><span></span><span></span></div></div>
+    <div id="retList"></div>
+  </div>
+</div>
+
+<script>
+// Default date = yesterday (HSP is historical only)
+const yd = new Date(); yd.setDate(yd.getDate()-1);
+const ydStr = yd.toISOString().split('T')[0];
+document.getElementById('journeyDate').value = ydStr;
+document.getElementById('journeyDate').max   = ydStr;
+
+let maxJourneyMins = 999;
+
+const WORKER_BASE = 'https://small-boat-1798.steve-w.workers.dev';
+
+// ── Mock data ──────────────────────────────────────────────────────────────
+const MOCK_OUT = [
+  { dep:'07:24', arrSched:'08:27', arrActual:'08:58', delayMins:31, op:'Great Western Railway' },
+  { dep:'07:54', arrSched:'08:57', arrActual:'09:22', delayMins:25, op:'Great Western Railway' },
+  { dep:'08:15', arrSched:'09:18', arrActual:'09:36', delayMins:18, op:'Great Western Railway' },
+  { dep:'08:45', arrSched:'09:48', arrActual:'10:02', delayMins:14, op:'Great Western Railway' },
+  { dep:'09:15', arrSched:'10:18', arrActual:'10:28', delayMins:10, op:'Great Western Railway' },
+];
+const MOCK_RET = [
+  { dep:'17:03', arrSched:'18:06', arrActual:'18:49', delayMins:43, op:'Great Western Railway' },
+  { dep:'17:33', arrSched:'18:36', arrActual:'19:12', delayMins:36, op:'Great Western Railway' },
+  { dep:'18:03', arrSched:'19:06', arrActual:'19:32', delayMins:26, op:'Great Western Railway' },
+  { dep:'18:33', arrSched:'19:36', arrActual:'19:52', delayMins:16, op:'Great Western Railway' },
+  { dep:'19:03', arrSched:'20:06', arrActual:'20:19', delayMins:13, op:'Great Western Railway' },
+];
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+const fmt4 = t => (!t||t.length<4) ? (t||'—') : t.slice(0,2)+':'+t.slice(2,4);
+const toMins = s => { if(!s)return 0; const p=(s.includes(':')?s.split(':'):[s.slice(0,2),s.slice(2,4)]); return +p[0]*60+ +p[1]; };
+const diffMins = (a,b) => toMins(b)-toMins(a);
+
+function journeyMinsFmt(dep, arr) {
+  // dep/arr already formatted "HH:MM"
+  return toMins(arr) - toMins(dep);
+}
+
+function fmtDate(d) {
+  return new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+
+function dayType(dateStr) {
+  const dow = new Date(dateStr+'T12:00:00').getDay();
+  if (dow===6) return 'SATURDAY';
+  if (dow===0) return 'SUNDAY';
+  return 'WEEKDAY';
+}
+
+function authHeader(e,p) { return 'Basic '+btoa(e+':'+p); }
+
+function showErr(m)  { const el=document.getElementById('errMsg');  el.textContent=m; el.classList.add('on'); }
+function hideErr()   { document.getElementById('errMsg').classList.remove('on'); }
+function showInfo(m) { const el=document.getElementById('infoMsg'); el.innerHTML=m;  el.classList.add('on'); }
+function hideInfo()  { document.getElementById('infoMsg').classList.remove('on'); }
+
+function setLoading(listId, loaderId, on) {
+  document.getElementById(listId).innerHTML='';
+  document.getElementById(loaderId).classList.toggle('on',on);
+}
+
+function setFilter(mins, btn) {
+  maxJourneyMins = mins;
+  document.querySelectorAll('.pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function rankClass(i)   { return ['rank-1','rank-2','rank-3'][i]||''; }
+function delayClass(i)  { return ['dm-1','dm-2','dm-3','dm-n'][Math.min(i,3)]; }
+function actualClass(i) { return ['act-1','act-2','act-3','act-n'][Math.min(i,3)]; }
+
+function renderList(listId, trains) {
+  const el = document.getElementById(listId);
+  const shown = trains
+    .filter(t => journeyMinsFmt(t.dep, t.arrSched) <= maxJourneyMins)
+    .sort((a,b) => b.delayMins-a.delayMins)
+    .slice(0,5);
+
+  if (!shown.length) {
+    el.innerHTML=`<div class="empty"><div class="icon">🚆</div>No delayed trains found<br>matching your filters.</div>`;
+    return;
+  }
+
+  el.innerHTML = shown.map((t,i) => `
+    <div class="train-card">
+      <div class="rank ${rankClass(i)}">${i+1}</div>
+      <div>
+        <div class="train-times">
+          <span class="dep">${t.dep}</span>
+          <span class="sched">→ sched ${t.arrSched}</span>
+          <span class="${actualClass(i)}">actual ${t.arrActual}</span>
+        </div>
+        <div class="train-meta"><span class="op">${t.op}</span></div>
+      </div>
+      <div class="delay-badge">
+        <div class="delay-mins ${delayClass(i)}">+${t.delayMins}</div>
+        <div class="delay-label">mins late</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── HSP API ────────────────────────────────────────────────────────────────
+async function hspPost(endpoint, body, auth) {
+  // endpoint is e.g. 'serviceMetrics' or 'serviceDetails'
+  const path = endpoint.split('/').pop();
+  const url  = `${WORKER_BASE}/${path}`;
+  const res = await fetch(url, {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization': auth,
+    },
+    body: JSON.stringify(body)
+  });
+  if (res.status===401) throw new Error('Invalid credentials (401) — check your email and password');
+  if (res.status===403) throw new Error('Access denied (403) — make sure HSP is enabled on your account');
+  if (!res.ok) throw new Error(`API error: HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchDelays(from, to, date, auth) {
+  const metricsBody = {
+    from_loc:  from,
+    to_loc:    to,
+    from_time: '0000',
+    to_time:   '2359',
+    from_date: date,
+    to_date:   date,
+    days:      dayType(date)
+  };
+
+  const metrics = await hspPost('serviceMetrics', metricsBody, auth);
+  const services = metrics?.Services || [];
+  if (!services.length) return [];
+
+  const results = [];
+
+  // Fetch details for each service (limit to 20 to avoid hammering API)
+  const toFetch = services.slice(0,20);
+
+  await Promise.allSettled(toFetch.map(async svc => {
+    try {
+      const rid = svc.serviceAttributesMetrics?.rids?.[0];
+      if (!rid) return;
+
+      const detail = await hspPost('serviceDetails', { rid }, auth);
+      const locs   = detail?.serviceAttributesDetails?.locations || [];
+
+      const originLoc = locs.find(l => l.location === from);
+      const destLoc   = locs.find(l => l.location === to);
+      if (!originLoc || !destLoc) return;
+
+      const depSched  = originLoc.gbtt_ptd || originLoc.gbtt_pta || '';
+      const arrSched  = destLoc.gbtt_pta   || destLoc.gbtt_ptd   || '';
+      const arrActual = destLoc.actual_ta  || destLoc.actual_td  || arrSched;
+
+      const delay = diffMins(arrSched, arrActual);
+      if (delay <= 0) return; // on time or early
+
+      const jm = diffMins(depSched, arrSched);
+      if (jm <= 0 || jm > 300) return;
+
+      // Map TOC code to name
+      const tocMap = {
+        'GW':'Great Western Railway','GX':'Gatwick Express','SE':'Southeastern',
+        'SN':'Southern','TL':'Thameslink','LM':'West Midlands Trains',
+        'VT':'Avanti West Coast','XC':'CrossCountry','EM':'East Midlands Railway',
+        'AW':'Transport for Wales','SR':'ScotRail','HX':'Heathrow Express',
+        'CC':'c2c','CS':'Caledonian Sleeper','GC':'Grand Central',
+        'HT':'Hull Trains','IL':'Island Line','LD':'Lumo',
+        'LE':'Greater Anglia','LO':'London Overground','LT':'London Underground',
+        'ME':'Merseyrail','NT':'Northern','NY':'North Yorkshire Moors Railway',
+        'SW':'South Western Railway','TP':'TransPennine Express','TW':'Tyne & Wear Metro',
+        'ZZ':'Unknown'
+      };
+      const tocCode = svc.serviceAttributesMetrics?.toc_code || detail?.serviceAttributesDetails?.toc_code || '';
+      const op = tocMap[tocCode] || tocCode || 'Rail Service';
+
+      results.push({
+        dep:       fmt4(depSched),
+        arrSched:  fmt4(arrSched),
+        arrActual: fmt4(arrActual),
+        delayMins: delay,
+        op
+      });
+    } catch(e) { /* skip individual service errors silently */ }
+  }));
+
+  return results;
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────
+async function search() {
+  hideErr(); hideInfo();
+
+  const from  = document.getElementById('fromCRS').value.trim().toUpperCase();
+  const to    = document.getElementById('toCRS').value.trim().toUpperCase();
+  const date  = document.getElementById('journeyDate').value;
+  const email = document.getElementById('nrEmail').value.trim();
+  const pass  = document.getElementById('nrPass').value;
+
+  if (!from||!to||!date)            { showErr('Please fill in From, To and Date.'); return; }
+  if (from.length!==3||to.length!==3) { showErr('Station codes must be exactly 3 letters (e.g. DID, PAD).'); return; }
+
+  document.getElementById('outRoute').textContent = `${from} → ${to}`;
+  document.getElementById('retRoute').textContent = `${to} → ${from}`;
+  const df = fmtDate(date);
+  document.getElementById('outBadge').textContent = df;
+  document.getElementById('retBadge').textContent = df;
+
+  // No credentials → demo mode
+  if (!email || !pass) {
+    showInfo('No credentials entered — showing <b>demo data</b>. Add your National Rail Data Portal email &amp; password above for real delays.');
+    document.getElementById('statusBar').innerHTML = `Demo mode — <b>${from} ↔ ${to}</b>`;
+    renderList('outList', MOCK_OUT);
+    renderList('retList', MOCK_RET);
+    return;
+  }
+
+  // Live mode
+  document.getElementById('statusBar').innerHTML = `Fetching HSP data for <b>${from} ↔ ${to}</b> on <b>${df}</b>…`;
+  setLoading('outList','outLoader',true);
+  setLoading('retList','retLoader',true);
+
+  const auth = authHeader(email, pass);
+
+  try {
+    const [outTrains, retTrains] = await Promise.all([
+      fetchDelays(from, to, date, auth),
+      fetchDelays(to, from, date, auth)
+    ]);
+
+    setLoading('outList','outLoader',false);
+    setLoading('retList','retLoader',false);
+
+    if (!outTrains.length && !retTrains.length) {
+      showInfo(`No delayed services found for <b>${from} ↔ ${to}</b> on <b>${df}</b>. ` +
+        `Check the date isn't a weekend when fewer services run, or try different CRS codes.`);
+    }
+
+    renderList('outList', outTrains);
+    renderList('retList', retTrains);
+
+    const dot = document.getElementById('credDot');
+    dot.classList.add('ok');
+    document.getElementById('credStatus').textContent = 'National Rail Data Portal — connected';
+    document.getElementById('statusBar').innerHTML = `Live HSP data — <b>${from} ↔ ${to}</b> on <b>${df}</b>`;
+
+  } catch(e) {
+    setLoading('outList','outLoader',false);
+    setLoading('retList','retLoader',false);
+    showErr(e.message);
+    document.getElementById('statusBar').textContent = 'Error loading data.';
+    document.getElementById('credDot').classList.add('err');
+  }
+}
+
+// Initial demo render
+renderList('outList', MOCK_OUT);
+renderList('retList', MOCK_RET);
+</script>
+</body>
+</html>
