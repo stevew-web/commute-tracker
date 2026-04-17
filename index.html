@@ -294,7 +294,14 @@ document.getElementById('journeyDate').max   = ydStr;
 
 let maxJourneyMins = 999;
 
-const WORKER_BASE = 'https://slow-ant-15.stevew-web.deno.net';
+const LOCAL_PROXY  = 'http://localhost:8787';
+const REMOTE_PROXY = 'https://slow-ant-15.stevew-web.deno.net';
+let   WORKER_BASE  = REMOTE_PROXY; // updated after probe below
+
+// Prefer the local proxy (fast, home network) if it's running
+fetch(LOCAL_PROXY + '/serviceMetrics', { method: 'OPTIONS' })
+  .then(() => { WORKER_BASE = LOCAL_PROXY; console.log('Using local proxy'); })
+  .catch(() => { console.log('Using remote proxy'); });
 
 // ── Mock data ──────────────────────────────────────────────────────────────
 const MOCK_OUT = [
