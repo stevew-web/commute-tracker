@@ -190,6 +190,17 @@
   .creds-note a { color:var(--accent); text-decoration:none; }
   .creds-note a:hover { text-decoration:underline; }
   .creds-note b { color:var(--text); font-weight:500; }
+
+  .time-windows { margin-top:1rem; display:flex; flex-direction:column; gap:0.5rem; }
+  .tw-row { display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+  .tw-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); width:120px; flex-shrink:0; }
+  .tw-sep { font-size:0.72rem; color:var(--muted); }
+  .tw-row input[type=time] {
+    background:var(--bg); border:1px solid var(--border); color:var(--text);
+    font-family:'DM Mono',monospace; font-size:0.82rem; padding:0.4rem 0.65rem;
+    border-radius:6px; outline:none; transition:border-color .15s;
+  }
+  .tw-row input[type=time]:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(29,111,242,.1); }
 </style>
 </head>
 <body>
@@ -218,7 +229,9 @@
     </div>
   </div>
   <div class="creds-note">
-    Use your <a href="https://opendata.nationalrail.co.uk" target="_blank">opendata.nationalrail.co.uk</a> email &amp; password. Used in-browser only — never stored or sent anywhere except directly to the National Rail HSP API.
+    Use your <a href="https://opendata.nationalrail.co.uk" target="_blank">opendata.nationalrail.co.uk</a> email &amp; password.
+    Saved in this browser only — never sent anywhere except the National Rail HSP API.
+    <a href="#" onclick="clearCreds();return false;">Clear saved credentials</a>
   </div>
 </div>
 
@@ -239,6 +252,20 @@
       <input type="date" id="journeyDate">
     </div>
     <button class="btn btn-primary" onclick="search()">Search →</button>
+  </div>
+  <div class="time-windows">
+    <div class="tw-row">
+      <span class="tw-label">Outbound window</span>
+      <input type="time" id="outFrom" value="05:30">
+      <span class="tw-sep">to</span>
+      <input type="time" id="outTo" value="10:00">
+    </div>
+    <div class="tw-row">
+      <span class="tw-label">Return window</span>
+      <input type="time" id="retFrom" value="16:00">
+      <span class="tw-sep">to</span>
+      <input type="time" id="retTo" value="21:00">
+    </div>
   </div>
   <div class="creds-note">
     3-letter CRS station codes: <b>DID</b> = Didcot Parkway · <b>PAD</b> = London Paddington · <b>RDG</b> = Reading · <b>OXF</b> = Oxford.
@@ -291,6 +318,38 @@ const yd = new Date(); yd.setDate(yd.getDate()-1);
 const ydStr = yd.toISOString().split('T')[0];
 document.getElementById('journeyDate').value = ydStr;
 document.getElementById('journeyDate').max   = ydStr;
+
+// ── Persist settings ────────────────────────────────────────────────────────
+const LS = {
+  load() {
+    const v = k => localStorage.getItem(k);
+    if (v('hsp_email'))    document.getElementById('nrEmail').value  = v('hsp_email');
+    if (v('hsp_pass'))     document.getElementById('nrPass').value   = v('hsp_pass');
+    if (v('hsp_from'))     document.getElementById('fromCRS').value  = v('hsp_from');
+    if (v('hsp_to'))       document.getElementById('toCRS').value    = v('hsp_to');
+    if (v('hsp_out_from')) document.getElementById('outFrom').value  = v('hsp_out_from');
+    if (v('hsp_out_to'))   document.getElementById('outTo').value    = v('hsp_out_to');
+    if (v('hsp_ret_from')) document.getElementById('retFrom').value  = v('hsp_ret_from');
+    if (v('hsp_ret_to'))   document.getElementById('retTo').value    = v('hsp_ret_to');
+  },
+  save() {
+    localStorage.setItem('hsp_email',    document.getElementById('nrEmail').value);
+    localStorage.setItem('hsp_pass',     document.getElementById('nrPass').value);
+    localStorage.setItem('hsp_from',     document.getElementById('fromCRS').value);
+    localStorage.setItem('hsp_to',       document.getElementById('toCRS').value);
+    localStorage.setItem('hsp_out_from', document.getElementById('outFrom').value);
+    localStorage.setItem('hsp_out_to',   document.getElementById('outTo').value);
+    localStorage.setItem('hsp_ret_from', document.getElementById('retFrom').value);
+    localStorage.setItem('hsp_ret_to',   document.getElementById('retTo').value);
+  }
+};
+LS.load();
+
+function clearCreds() {
+  ['hsp_email','hsp_pass'].forEach(k => localStorage.removeItem(k));
+  document.getElementById('nrEmail').value = '';
+  document.getElementById('nrPass').value  = '';
+}
 
 let maxJourneyMins = 999;
 
@@ -519,9 +578,15 @@ async function search() {
   const auth = authHeader(email, pass);
 
   try {
+    LS.save();
+    const outFrom = document.getElementById('outFrom').value.replace(':','');
+    const outTo   = document.getElementById('outTo').value.replace(':','');
+    const retFrom = document.getElementById('retFrom').value.replace(':','');
+    const retTo   = document.getElementById('retTo').value.replace(':','');
+
     const [outTrains, retTrains] = await Promise.all([
-      fetchDelays(from, to, date, auth, '0600', '1000'),
-      fetchDelays(to, from, date, auth, '1600', '2100')
+      fetchDelays(from, to, date, auth, outFrom, outTo),
+      fetchDelays(to, from, date, auth, retFrom, retTo)
     ]);
 
     setLoading('outList','outLoader',false);
