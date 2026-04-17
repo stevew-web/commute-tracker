@@ -191,16 +191,31 @@
   .creds-note a:hover { text-decoration:underline; }
   .creds-note b { color:var(--text); font-weight:500; }
 
-  .time-windows { margin-top:1rem; display:flex; flex-direction:column; gap:0.5rem; }
+  /* Search bar */
+  .search-bar { display:grid; grid-template-columns:1fr auto; gap:0.85rem; align-items:end; }
+  @media(max-width:500px){ .search-bar { grid-template-columns:1fr; } }
+
+  /* Settings panel */
+  .settings-toggle { font-size:0.67rem; color:var(--muted); margin-top:.9rem; cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:0.3rem; }
+  .settings-toggle:hover { color:var(--accent); }
+  .settings-panel { display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); }
+  .settings-panel.open { display:block; }
+  .settings-section { margin-bottom:1rem; }
+  .settings-section:last-child { margin-bottom:0; }
+  .settings-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:0.6rem; }
+  .time-windows { display:flex; flex-direction:column; gap:0.5rem; }
   .tw-row { display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
-  .tw-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); width:120px; flex-shrink:0; }
+  .tw-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); width:110px; flex-shrink:0; }
   .tw-sep { font-size:0.72rem; color:var(--muted); }
-  .tw-row input[type=time] {
+  .tw-row input[type=time], .settings-panel input[type=text], .settings-panel input[type=email], .settings-panel input[type=password] {
     background:var(--bg); border:1px solid var(--border); color:var(--text);
-    font-family:'DM Mono',monospace; font-size:0.82rem; padding:0.4rem 0.65rem;
+    font-family:'DM Mono',monospace; font-size:0.82rem; padding:0.45rem 0.75rem;
     border-radius:6px; outline:none; transition:border-color .15s;
   }
-  .tw-row input[type=time]:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(29,111,242,.1); }
+  .tw-row input[type=time]:focus, .settings-panel input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(29,111,242,.1); }
+  .settings-note { font-size:0.67rem; color:var(--muted); margin-top:.7rem; line-height:1.7; }
+  .settings-note a { color:var(--accent); text-decoration:none; }
+  .settings-note a:hover { text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -212,64 +227,73 @@
   </div>
 </header>
 
-<!-- Credentials -->
+<!-- Main search -->
 <div class="card">
-  <div class="card-title">
-    <div class="dot" id="credDot"></div>
-    <span id="credStatus">National Rail Data Portal — not connected (demo mode)</span>
-  </div>
-  <div class="grid-2">
+  <div class="search-bar">
     <div class="field">
-      <label>Email address</label>
-      <input type="email" id="nrEmail" placeholder="your@email.com" autocomplete="off">
-    </div>
-    <div class="field">
-      <label>Password</label>
-      <input type="password" id="nrPass" placeholder="••••••••" autocomplete="off">
-    </div>
-  </div>
-  <div class="creds-note">
-    Use your <a href="https://opendata.nationalrail.co.uk" target="_blank">opendata.nationalrail.co.uk</a> email &amp; password.
-    Saved in this browser only — never sent anywhere except the National Rail HSP API.
-    <a href="#" onclick="clearCreds();return false;">Clear saved credentials</a>
-  </div>
-</div>
-
-<!-- Search -->
-<div class="card">
-  <div class="card-title">Journey</div>
-  <div class="grid-4">
-    <div class="field">
-      <label>From (CRS code)</label>
-      <input type="text" id="fromCRS" placeholder="DID" value="DID" maxlength="3" style="text-transform:uppercase">
-    </div>
-    <div class="field">
-      <label>To (CRS code)</label>
-      <input type="text" id="toCRS" placeholder="PAD" value="PAD" maxlength="3" style="text-transform:uppercase">
-    </div>
-    <div class="field">
-      <label>Date (past dates only)</label>
+      <label>Date</label>
       <input type="date" id="journeyDate">
     </div>
     <button class="btn btn-primary" onclick="search()">Search →</button>
   </div>
-  <div class="time-windows">
-    <div class="tw-row">
-      <span class="tw-label">Outbound window</span>
-      <input type="time" id="outFrom" value="05:30">
-      <span class="tw-sep">to</span>
-      <input type="time" id="outTo" value="10:00">
+
+  <span class="settings-toggle" onclick="toggleSettings()">
+    <span id="settingsArrow">▸</span> Settings
+    (<span id="settingsSummary">not configured</span>)
+  </span>
+
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-section">
+      <div class="settings-label">Credentials</div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Email address</label>
+          <input type="email" id="nrEmail" placeholder="your@email.com">
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="nrPass" placeholder="••••••••">
+        </div>
+      </div>
     </div>
-    <div class="tw-row">
-      <span class="tw-label">Return window</span>
-      <input type="time" id="retFrom" value="16:00">
-      <span class="tw-sep">to</span>
-      <input type="time" id="retTo" value="21:00">
+
+    <div class="settings-section">
+      <div class="settings-label">Route</div>
+      <div class="grid-2">
+        <div class="field">
+          <label>From (CRS code)</label>
+          <input type="text" id="fromCRS" placeholder="DID" value="DID" maxlength="3" style="text-transform:uppercase">
+        </div>
+        <div class="field">
+          <label>To (CRS code)</label>
+          <input type="text" id="toCRS" placeholder="PAD" value="PAD" maxlength="3" style="text-transform:uppercase">
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="creds-note">
-    3-letter CRS station codes: <b>DID</b> = Didcot Parkway · <b>PAD</b> = London Paddington · <b>RDG</b> = Reading · <b>OXF</b> = Oxford.
-    <a href="https://www.nationalrail.co.uk/stations_destinations/48541.aspx" target="_blank">Full CRS code list →</a>
+
+    <div class="settings-section">
+      <div class="settings-label">Commute windows</div>
+      <div class="time-windows">
+        <div class="tw-row">
+          <span class="tw-label">Outbound</span>
+          <input type="time" id="outFrom" value="05:30">
+          <span class="tw-sep">to</span>
+          <input type="time" id="outTo" value="10:00">
+        </div>
+        <div class="tw-row">
+          <span class="tw-label">Return</span>
+          <input type="time" id="retFrom" value="16:00">
+          <span class="tw-sep">to</span>
+          <input type="time" id="retTo" value="21:00">
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-note">
+      Credentials saved in this browser only — never sent anywhere except the National Rail HSP API.
+      <a href="#" onclick="clearCreds();return false;">Clear saved credentials</a> ·
+      <a href="https://www.nationalrail.co.uk/stations_destinations/48541.aspx" target="_blank">CRS code list →</a>
+    </div>
   </div>
 </div>
 
@@ -331,6 +355,7 @@ const LS = {
     if (v('hsp_out_to'))   document.getElementById('outTo').value    = v('hsp_out_to');
     if (v('hsp_ret_from')) document.getElementById('retFrom').value  = v('hsp_ret_from');
     if (v('hsp_ret_to'))   document.getElementById('retTo').value    = v('hsp_ret_to');
+    updateSettingsSummary();
   },
   save() {
     localStorage.setItem('hsp_email',    document.getElementById('nrEmail').value);
@@ -341,14 +366,45 @@ const LS = {
     localStorage.setItem('hsp_out_to',   document.getElementById('outTo').value);
     localStorage.setItem('hsp_ret_from', document.getElementById('retFrom').value);
     localStorage.setItem('hsp_ret_to',   document.getElementById('retTo').value);
+    updateSettingsSummary();
   }
 };
 LS.load();
+
+function updateSettingsSummary() {
+  const email = document.getElementById('nrEmail').value;
+  const from  = document.getElementById('fromCRS').value || 'DID';
+  const to    = document.getElementById('toCRS').value   || 'PAD';
+  const outF  = document.getElementById('outFrom').value;
+  const outT  = document.getElementById('outTo').value;
+  const retF  = document.getElementById('retFrom').value;
+  const retT  = document.getElementById('retTo').value;
+  const configured = !!email;
+  document.getElementById('settingsSummary').textContent = configured
+    ? `${from}↔${to} · ${outF}–${outT} / ${retF}–${retT}`
+    : 'not configured';
+  // Auto-collapse when configured
+  if (configured) {
+    document.getElementById('settingsPanel').classList.remove('open');
+    document.getElementById('settingsArrow').textContent = '▸';
+  } else {
+    document.getElementById('settingsPanel').classList.add('open');
+    document.getElementById('settingsArrow').textContent = '▾';
+  }
+}
+
+function toggleSettings() {
+  const panel = document.getElementById('settingsPanel');
+  const arrow = document.getElementById('settingsArrow');
+  const open  = panel.classList.toggle('open');
+  arrow.textContent = open ? '▾' : '▸';
+}
 
 function clearCreds() {
   ['hsp_email','hsp_pass'].forEach(k => localStorage.removeItem(k));
   document.getElementById('nrEmail').value = '';
   document.getElementById('nrPass').value  = '';
+  updateSettingsSummary();
 }
 
 let maxJourneyMins = 999;
