@@ -289,21 +289,22 @@
       </div>
     </div>
 
+    <div class="settings-section">
+      <div class="settings-label">Max journey time</div>
+      <div class="filter-bar" style="margin-bottom:0">
+        <button class="pill active" onclick="setFilter(999,this)">All trains</button>
+        <button class="pill" onclick="setFilter(55,this)">Under 55 min</button>
+        <button class="pill" onclick="setFilter(70,this)">Under 70 min</button>
+        <button class="pill" onclick="setFilter(90,this)">Under 90 min</button>
+      </div>
+    </div>
+
     <div class="settings-note">
       Credentials saved in this browser only — never sent anywhere except the National Rail HSP API.
       <a href="#" onclick="clearCreds();return false;">Clear saved credentials</a> ·
       <a href="https://www.nationalrail.co.uk/stations_destinations/48541.aspx" target="_blank">CRS code list →</a>
     </div>
   </div>
-</div>
-
-<!-- Filters -->
-<div class="filter-bar">
-  <span class="filter-label">Max journey time:</span>
-  <button class="pill active" onclick="setFilter(999,this)">All trains</button>
-  <button class="pill" onclick="setFilter(55,this)">Under 55 min</button>
-  <button class="pill" onclick="setFilter(70,this)">Under 70 min</button>
-  <button class="pill" onclick="setFilter(90,this)">Under 90 min</button>
 </div>
 
 <div class="alert alert-err"  id="errMsg"></div>
@@ -370,6 +371,11 @@ const LS = {
   }
 };
 LS.load();
+
+// Save immediately on any settings change
+['nrEmail','nrPass','fromCRS','toCRS','outFrom','outTo','retFrom','retTo'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => LS.save());
+});
 
 function updateSettingsSummary() {
   const email = document.getElementById('nrEmail').value;
