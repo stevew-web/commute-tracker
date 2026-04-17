@@ -412,12 +412,12 @@ async function hspPost(endpoint, body, auth) {
   return res.json();
 }
 
-async function fetchDelays(from, to, date, auth) {
+async function fetchDelays(from, to, date, auth, fromTime='0600', toTime='1000') {
   const metricsBody = {
     from_loc:  from,
     to_loc:    to,
-    from_time: '0000',
-    to_time:   '2359',
+    from_time: fromTime,
+    to_time:   toTime,
     from_date: date,
     to_date:   date,
     days:      dayType(date)
@@ -512,7 +512,7 @@ async function search() {
   }
 
   // Live mode
-  document.getElementById('statusBar').innerHTML = `Fetching HSP data for <b>${from} ↔ ${to}</b> on <b>${df}</b>…`;
+  document.getElementById('statusBar').innerHTML = `Fetching HSP data for <b>${from} ↔ ${to}</b> on <b>${df}</b>… (HSP API can be slow — please wait)`;
   setLoading('outList','outLoader',true);
   setLoading('retList','retLoader',true);
 
@@ -520,8 +520,8 @@ async function search() {
 
   try {
     const [outTrains, retTrains] = await Promise.all([
-      fetchDelays(from, to, date, auth),
-      fetchDelays(to, from, date, auth)
+      fetchDelays(from, to, date, auth, '0600', '1000'),
+      fetchDelays(to, from, date, auth, '1600', '2100')
     ]);
 
     setLoading('outList','outLoader',false);
