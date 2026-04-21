@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Late Trains — Commute Tracker</title>
+<title>LateTrains — weekly commute delay report</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -11,13 +11,15 @@
     --surface: #ffffff;
     --surface2: #f0f2f5;
     --border: #dde1e9;
+    --border-strong: #c4cad6;
     --text: #1a1f2e;
     --muted: #7a8399;
+    --muted2: #9aa3b6;
     --accent: #1d6ff2;
-    --red: #e03030;
-    --green: #18a060;
-    --orange: #d96a10;
-    --blue: #1d6ff2;
+
+    --tier1-bg: #faeeda;   --tier1-fg: #633806;
+    --tier2-bg: #f5c4b3;   --tier2-fg: #712b13;
+    --tier3-bg: #f09595;   --tier3-fg: #501313;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,11 +29,19 @@
     color: var(--text);
     font-family: 'DM Mono', monospace;
     min-height: 100vh;
-    padding: 2rem;
+    padding: 2rem 1.25rem;
+    max-width: 1100px;
+    margin: 0 auto;
   }
 
-  header { display:flex; align-items:baseline; gap:1rem; margin-bottom:2.5rem; }
-
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
   h1 {
     font-family: 'Inter', sans-serif;
     font-size: clamp(1.4rem, 3vw, 2rem);
@@ -39,183 +49,341 @@
     letter-spacing: -0.03em;
   }
   h1 span { color: var(--accent); }
-
   .tagline {
     font-size: 0.7rem;
     color: var(--muted);
     letter-spacing: 0.1em;
     text-transform: uppercase;
+    margin-top: 0.25rem;
   }
+  .updated {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .updated b { color: var(--text); font-weight: 500; }
 
-  .card {
+  .notice {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1.25rem;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    padding: 2rem 1.5rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.8;
+  }
+  .notice b { color: var(--text); }
+  .notice code {
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
   }
 
-  .card-title {
-    font-size: 0.65rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 1rem;
+  .week {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .week-head {
+    padding: 1rem 1.25rem;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    justify-content: space-between;
+    gap: 1rem;
+    cursor: pointer;
+    user-select: none;
+    flex-wrap: wrap;
+  }
+  .week-head:hover { background: var(--surface2); }
+  .week-head-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .caret {
+    color: var(--muted2);
+    font-size: 0.75rem;
+    width: 10px;
+    transition: transform 0.15s;
+    display: inline-block;
+  }
+  .week.expanded .caret { transform: rotate(90deg); }
+  .week-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .week-summary {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .week-summary .worst {
+    color: var(--text);
+    font-weight: 500;
   }
 
-  .dot { width:7px; height:7px; border-radius:50%; background:var(--muted); flex-shrink:0; }
-  .dot.ok  { background:var(--green); box-shadow:0 0 5px var(--green); }
-  .dot.err { background:var(--red); }
+  .week-body { display: none; padding: 0 1.25rem 1.25rem; }
+  .week.expanded .week-body { display: block; }
 
-  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:0.85rem; }
-  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:0.85rem; align-items:end; }
+  /* ── Desktop grid ── */
+  .view-desktop { display: block; }
 
-  @media(max-width:680px){
-    .grid-2 { grid-template-columns:1fr; }
-    .grid-4 { grid-template-columns:1fr 1fr; }
+  .grid {
+    display: grid;
+    grid-template-columns: 48px repeat(10, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .g-day {
+    grid-column: span 2;
+    text-align: center;
+    font-size: 0.72rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 0 2px;
+  }
+  .g-dir {
+    text-align: center;
+    font-size: 0.62rem;
+    color: var(--muted2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 0 6px;
+  }
+  .g-section {
+    grid-column: 1 / -1;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    padding: 8px 0 4px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+  .g-section.first { border-top: none; margin-top: 0; padding-top: 4px; }
+  .g-label-col { /* blank spacer for alignment */ }
+
+  .cell {
+    padding: 6px 3px;
+    text-align: center;
+    border-radius: 5px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: outline 0.08s;
+  }
+  .cell .dep {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-weight: 400;
+    font-size: 0.65rem;
+    opacity: 0.75;
+    margin-top: 2px;
+  }
+  .cell .more {
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 500;
+    opacity: 0.7;
+    margin-top: 1px;
+  }
+  .cell:hover { outline: 2px solid var(--border-strong); }
+  .cell.active { outline: 2px solid var(--accent); }
+  .cell.t1 { background: var(--tier1-bg); color: var(--tier1-fg); }
+  .cell.t2 { background: var(--tier2-bg); color: var(--tier2-fg); }
+  .cell.t3 { background: var(--tier3-bg); color: var(--tier3-fg); }
+
+  .empty {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--muted2);
+    opacity: 0.5;
+    padding: 6px 3px;
+    font-weight: 400;
   }
 
-  .field label {
-    display:block; font-size:0.65rem; letter-spacing:0.1em;
-    text-transform:uppercase; color:var(--muted); margin-bottom:0.45rem;
+  /* ── Mobile day-first view ── */
+  .view-mobile { display: none; }
+  .day-tabs {
+    display: flex;
+    gap: 4px;
+    margin: 0 0 1rem;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .day-tab {
+    flex: 1;
+    padding: 8px 0;
+    text-align: center;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--muted);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.1s;
+    position: relative;
+  }
+  .day-tab.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .day-tab .dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--tier2-bg);
+    margin-left: 3px;
+    vertical-align: middle;
+  }
+  .day-tab .dot.worst-t1 { background: var(--tier1-bg); }
+  .day-tab .dot.worst-t3 { background: var(--tier3-bg); }
+
+  .scenario {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    margin-bottom: 0.6rem;
+  }
+  .scenario-head {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .scenario-head .dir {
+    font-size: 0.62rem;
+    color: var(--muted2);
+  }
+  .scenario-rows { display: flex; flex-direction: column; gap: 4px; }
+  .srow {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 8px;
+    background: var(--surface);
+    border-radius: 5px;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .srow:hover { background: #e8edf2; }
+  .srow .dm {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    min-width: 40px;
+  }
+  .srow.t1 .dm { color: var(--tier1-fg); }
+  .srow.t2 .dm { color: var(--tier2-fg); }
+  .srow.t3 .dm { color: var(--tier3-fg); }
+  .srow .dep-info { color: var(--muted); font-size: 0.72rem; }
+  .srow .toc { color: var(--accent); font-size: 0.7rem; }
+  .scenario-empty {
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.72rem;
+    color: var(--muted2);
   }
 
-  .field input {
-    width:100%; background:var(--bg); border:1px solid var(--border);
-    color:var(--text); font-family:'DM Mono',monospace; font-size:0.85rem;
-    padding:0.6rem 0.85rem; border-radius:6px; outline:none;
-    transition:border-color .15s, box-shadow .15s; -webkit-appearance:none;
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 14px;
+    margin-top: 0.85rem;
+    flex-wrap: wrap;
+    font-size: 0.68rem;
+    color: var(--muted);
+    align-items: center;
   }
-  .field input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(29,111,242,.1); }
-
-  .btn {
-    font-family:'Inter',sans-serif; font-size:0.8rem; font-weight:700;
-    letter-spacing:0.05em; border:none; padding:0.65rem 1.4rem;
-    border-radius:6px; cursor:pointer; height:38px; white-space:nowrap;
-    transition:opacity .15s, transform .1s;
+  .sw {
+    display: inline-block;
+    width: 14px;
+    height: 10px;
+    border-radius: 3px;
+    vertical-align: middle;
+    margin-right: 5px;
   }
-  .btn:hover { opacity:.85; }
-  .btn:active { transform:scale(.97); }
-  .btn-primary   { background:var(--accent); color:#fff; }
-  .btn-secondary { background:var(--surface2); border:1px solid var(--border); color:var(--text); }
-  .btn-secondary:hover { border-color:var(--accent); opacity:1; }
-
-  .filter-bar { display:flex; align-items:center; gap:0.5rem; margin-bottom:1.25rem; flex-wrap:wrap; }
-  .filter-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
-
-  .pill {
-    background:var(--surface); border:1px solid var(--border); color:var(--muted);
-    font-family:'DM Mono',monospace; font-size:0.72rem; padding:0.3rem 0.8rem;
-    border-radius:20px; cursor:pointer; transition:all .12s;
-  }
-  .pill.active { background:var(--accent); border-color:var(--accent); color:#fff; }
-  .pill:hover:not(.active) { border-color:var(--accent); color:var(--text); }
-
-  .results-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
-  @media(max-width:780px){ .results-grid { grid-template-columns:1fr; } }
-
-  .panel {
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.06);
+  .legend-hint {
+    margin-left: auto;
+    color: var(--muted2);
+    font-size: 0.65rem;
   }
 
-  .panel-header {
-    padding:1rem 1.25rem; border-bottom:1px solid var(--border);
-    display:flex; align-items:center; justify-content:space-between;
-    background:var(--surface2);
+  /* ── Detail panel ── */
+  .detail {
+    margin-top: 0.85rem;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    font-size: 0.78rem;
+    min-height: 48px;
   }
-
-  .panel-dir { font-size:0.65rem; font-family:'Inter',sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
-  .panel-route { font-family:'Inter',sans-serif; font-size:1rem; font-weight:700; margin-top:0.15rem; }
-  .panel-badge { font-size:0.65rem; padding:0.2rem 0.55rem; border-radius:4px; background:var(--surface); border:1px solid var(--border); color:var(--muted); }
-
-  .train-card {
-    display:grid; grid-template-columns:26px 1fr auto; gap:0.75rem;
-    align-items:center; padding:0.85rem 1.25rem; border-bottom:1px solid var(--border);
-    transition:background .12s;
+  .detail-head {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 0.6rem;
   }
-  .train-card:last-child { border-bottom:none; }
-  .train-card:hover { background:var(--surface2); }
-
-  .rank { font-family:'Inter',sans-serif; font-size:1.1rem; font-weight:800; color:var(--border); text-align:right; }
-  .rank-1 { color:var(--red); }
-  .rank-2 { color:var(--orange); }
-  .rank-3 { color:#c8960c; }
-
-  .train-times { display:flex; align-items:baseline; gap:0.5rem; margin-bottom:0.2rem; flex-wrap:wrap; }
-  .dep { font-size:1rem; font-weight:500; }
-  .sched { font-size:0.72rem; color:var(--muted); }
-  .act-1 { font-size:0.72rem; color:var(--red); font-weight:500; }
-  .act-2 { font-size:0.72rem; color:var(--orange); font-weight:500; }
-  .act-3 { font-size:0.72rem; color:#c8960c; font-weight:500; }
-  .act-n { font-size:0.72rem; color:var(--muted); font-weight:500; }
-
-  .train-meta { font-size:0.65rem; color:var(--muted); }
-  .train-meta .op { color:var(--blue); }
-
-  .delay-badge { text-align:right; }
-  .delay-mins { font-family:'Inter',sans-serif; font-size:1.3rem; font-weight:800; line-height:1; }
-  .dm-1 { color:var(--red); }
-  .dm-2 { color:var(--orange); }
-  .dm-3 { color:#c8960c; }
-  .dm-n { color:var(--muted); }
-  .delay-label { font-size:0.6rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
-
-  .empty { padding:2.5rem 1.5rem; text-align:center; color:var(--muted); font-size:0.78rem; line-height:2; }
-  .empty .icon { font-size:1.8rem; opacity:.35; margin-bottom:.5rem; }
-
-  @keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
-  .loader { display:none; padding:2rem; text-align:center; }
-  .loader.on { display:block; }
-  .loader-dots span {
-    display:inline-block; width:6px; height:6px; background:var(--accent);
-    border-radius:50%; margin:0 3px; animation:pulse 1.2s ease infinite;
+  .detail-hint {
+    color: var(--muted2);
+    font-size: 0.72rem;
   }
-  .loader-dots span:nth-child(2){animation-delay:.2s}
-  .loader-dots span:nth-child(3){animation-delay:.4s}
-
-  .status { font-size:0.65rem; color:var(--muted); margin-bottom:1.25rem; padding-left:.25rem; }
-  .status b { color:var(--accent); font-weight:500; }
-
-  .alert { font-size:0.75rem; padding:.75rem 1rem; border-radius:6px; margin-bottom:1rem; display:none; line-height:1.6; }
-  .alert.on { display:block; }
-  .alert-err  { background:rgba(224,48,48,.08);  border:1px solid rgba(224,48,48,.25);  color:var(--red); }
-  .alert-info { background:rgba(29,111,242,.07); border:1px solid rgba(29,111,242,.2);  color:var(--accent); }
-
-  .creds-note { font-size:0.67rem; color:var(--muted); margin-top:.85rem; line-height:1.7; }
-  .creds-note a { color:var(--accent); text-decoration:none; }
-  .creds-note a:hover { text-decoration:underline; }
-  .creds-note b { color:var(--text); font-weight:500; }
-
-  /* Search bar */
-  .search-bar { display:grid; grid-template-columns:1fr auto; gap:0.85rem; align-items:end; }
-  @media(max-width:500px){ .search-bar { grid-template-columns:1fr; } }
-
-  /* Settings panel */
-  .settings-toggle { font-size:0.67rem; color:var(--muted); margin-top:.9rem; cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:0.3rem; }
-  .settings-toggle:hover { color:var(--accent); }
-  .settings-panel { display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); }
-  .settings-panel.open { display:block; }
-  .settings-section { margin-bottom:1rem; }
-  .settings-section:last-child { margin-bottom:0; }
-  .settings-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:0.6rem; }
-  .time-windows { display:flex; flex-direction:column; gap:0.5rem; }
-  .tw-row { display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
-  .tw-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); width:110px; flex-shrink:0; }
-  .tw-sep { font-size:0.72rem; color:var(--muted); }
-  .tw-row input[type=time], .settings-panel input[type=text], .settings-panel input[type=email], .settings-panel input[type=password] {
-    background:var(--bg); border:1px solid var(--border); color:var(--text);
-    font-family:'DM Mono',monospace; font-size:0.82rem; padding:0.45rem 0.75rem;
-    border-radius:6px; outline:none; transition:border-color .15s;
+  .detail-row {
+    display: grid;
+    grid-template-columns: 60px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 6px 0;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
   }
-  .tw-row input[type=time]:focus, .settings-panel input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(29,111,242,.1); }
-  .settings-note { font-size:0.67rem; color:var(--muted); margin-top:.7rem; line-height:1.7; }
-  .settings-note a { color:var(--accent); text-decoration:none; }
-  .settings-note a:hover { text-decoration:underline; }
+  .detail-row:first-of-type { border-top: none; }
+  .detail-row .d {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+  }
+  .detail-row .d.t1 { color: var(--tier1-fg); }
+  .detail-row .d.t2 { color: var(--tier2-fg); }
+  .detail-row .d.t3 { color: var(--tier3-fg); }
+  .detail-row .m { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.72rem; }
+  .detail-row .op { color: var(--accent); font-size: 0.7rem; }
+
+  /* ── Mobile breakpoint ── */
+  @media (max-width: 720px) {
+    body { padding: 1.25rem 0.85rem; }
+    .view-desktop { display: none; }
+    .view-mobile { display: block; }
+    .week-head { padding: 0.85rem 1rem; }
+    .week-body { padding: 0 1rem 1rem; }
+    .week-summary { width: 100%; font-size: 0.7rem; }
+  }
 </style>
 </head>
 <body>
@@ -223,462 +391,356 @@
 <header>
   <div>
     <h1>Late<span>Trains</span></h1>
-    <div class="tagline">Commute Delay Tracker · National Rail HSP Data</div>
+    <div class="tagline">Weekly commute delay report · DID ↔ PAD</div>
   </div>
+  <div class="updated" id="updated">Loading…</div>
 </header>
 
-<!-- Main search -->
-<div class="card">
-  <div class="search-bar">
-    <div class="field">
-      <label>Date</label>
-      <input type="date" id="journeyDate">
-    </div>
-    <button class="btn btn-primary" onclick="search()">Search →</button>
-  </div>
-
-  <span class="settings-toggle" onclick="toggleSettings()">
-    <span id="settingsArrow">▸</span> Settings
-    (<span id="settingsSummary">not configured</span>)
-  </span>
-
-  <div class="settings-panel" id="settingsPanel">
-    <div class="settings-section">
-      <div class="settings-label">Credentials</div>
-      <div class="grid-2">
-        <div class="field">
-          <label>Email address</label>
-          <input type="email" id="nrEmail" placeholder="your@email.com">
-        </div>
-        <div class="field">
-          <label>Password</label>
-          <input type="password" id="nrPass" placeholder="••••••••">
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-label">Route</div>
-      <div class="grid-2">
-        <div class="field">
-          <label>From (CRS code)</label>
-          <input type="text" id="fromCRS" placeholder="DID" value="DID" maxlength="3" style="text-transform:uppercase">
-        </div>
-        <div class="field">
-          <label>To (CRS code)</label>
-          <input type="text" id="toCRS" placeholder="PAD" value="PAD" maxlength="3" style="text-transform:uppercase">
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-label">Commute windows</div>
-      <div class="time-windows">
-        <div class="tw-row">
-          <span class="tw-label">Outbound</span>
-          <input type="time" id="outFrom" value="05:30">
-          <span class="tw-sep">to</span>
-          <input type="time" id="outTo" value="10:00">
-        </div>
-        <div class="tw-row">
-          <span class="tw-label">Return</span>
-          <input type="time" id="retFrom" value="16:00">
-          <span class="tw-sep">to</span>
-          <input type="time" id="retTo" value="21:00">
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-label">Max journey time</div>
-      <div class="filter-bar" style="margin-bottom:0">
-        <button class="pill active" onclick="setFilter(999,this)">All trains</button>
-        <button class="pill" onclick="setFilter(55,this)">Under 55 min</button>
-        <button class="pill" onclick="setFilter(70,this)">Under 70 min</button>
-        <button class="pill" onclick="setFilter(90,this)">Under 90 min</button>
-      </div>
-    </div>
-
-    <div class="settings-note">
-      Credentials saved in this browser only — never sent anywhere except the National Rail HSP API.
-      <a href="#" onclick="clearCreds();return false;">Clear saved credentials</a> ·
-      <a href="https://www.nationalrail.co.uk/stations_destinations/48541.aspx" target="_blank">CRS code list →</a>
-    </div>
-  </div>
-</div>
-
-<div class="alert alert-err"  id="errMsg"></div>
-<div class="alert alert-info" id="infoMsg"></div>
-<div class="status" id="statusBar">Showing demo data. Enter credentials above and click Search for real delays.</div>
-
-<div class="results-grid">
-  <div class="panel">
-    <div class="panel-header">
-      <div>
-        <div class="panel-dir">Outbound ↗</div>
-        <div class="panel-route" id="outRoute">DID → PAD</div>
-      </div>
-      <div class="panel-badge" id="outBadge">Demo</div>
-    </div>
-    <div class="loader" id="outLoader"><div class="loader-dots"><span></span><span></span><span></span></div></div>
-    <div id="outList"></div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-header">
-      <div>
-        <div class="panel-dir">Return ↙</div>
-        <div class="panel-route" id="retRoute">PAD → DID</div>
-      </div>
-      <div class="panel-badge" id="retBadge">Demo</div>
-    </div>
-    <div class="loader" id="retLoader"><div class="loader-dots"><span></span><span></span><span></span></div></div>
-    <div id="retList"></div>
-  </div>
-</div>
+<div id="report"></div>
 
 <script>
-// Default date = yesterday (HSP is historical only)
-const yd = new Date(); yd.setDate(yd.getDate()-1);
-const ydStr = yd.toISOString().split('T')[0];
-document.getElementById('journeyDate').value = ydStr;
-document.getElementById('journeyDate').max   = ydStr;
-
-// ── Persist settings ────────────────────────────────────────────────────────
-const LS = {
-  load() {
-    const v = k => localStorage.getItem(k);
-    if (v('hsp_email'))    document.getElementById('nrEmail').value  = v('hsp_email');
-    if (v('hsp_pass'))     document.getElementById('nrPass').value   = v('hsp_pass');
-    if (v('hsp_from'))     document.getElementById('fromCRS').value  = v('hsp_from');
-    if (v('hsp_to'))       document.getElementById('toCRS').value    = v('hsp_to');
-    if (v('hsp_out_from')) document.getElementById('outFrom').value  = v('hsp_out_from');
-    if (v('hsp_out_to'))   document.getElementById('outTo').value    = v('hsp_out_to');
-    if (v('hsp_ret_from')) document.getElementById('retFrom').value  = v('hsp_ret_from');
-    if (v('hsp_ret_to'))   document.getElementById('retTo').value    = v('hsp_ret_to');
-    updateSettingsSummary();
-  },
-  save() {
-    localStorage.setItem('hsp_email',    document.getElementById('nrEmail').value);
-    localStorage.setItem('hsp_pass',     document.getElementById('nrPass').value);
-    localStorage.setItem('hsp_from',     document.getElementById('fromCRS').value);
-    localStorage.setItem('hsp_to',       document.getElementById('toCRS').value);
-    localStorage.setItem('hsp_out_from', document.getElementById('outFrom').value);
-    localStorage.setItem('hsp_out_to',   document.getElementById('outTo').value);
-    localStorage.setItem('hsp_ret_from', document.getElementById('retFrom').value);
-    localStorage.setItem('hsp_ret_to',   document.getElementById('retTo').value);
-    updateSettingsSummary();
-  }
+// ─── Static reference data ─────────────────────────────────────────────────
+const TOC_MAP = {
+  'GW':'Great Western Railway','XC':'CrossCountry','VT':'Avanti West Coast',
+  'LM':'West Midlands Trains','SW':'South Western Railway','HX':'Heathrow Express',
+  'EM':'East Midlands Railway','TP':'TransPennine Express','GX':'Gatwick Express',
+  'SE':'Southeastern','SN':'Southern','TL':'Thameslink','LE':'Greater Anglia',
+  'NT':'Northern','SR':'ScotRail','AW':'Transport for Wales','CC':'c2c',
+  'HT':'Hull Trains','LD':'Lumo','GC':'Grand Central','ME':'Merseyrail',
+  'LO':'London Overground','CS':'Caledonian Sleeper','IL':'Island Line',
 };
-LS.load();
-
-// Save immediately on any settings change
-['nrEmail','nrPass','fromCRS','toCRS','outFrom','outTo','retFrom','retTo'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => LS.save());
-});
-
-function updateSettingsSummary() {
-  const email = document.getElementById('nrEmail').value;
-  const from  = document.getElementById('fromCRS').value || 'DID';
-  const to    = document.getElementById('toCRS').value   || 'PAD';
-  const outF  = document.getElementById('outFrom').value;
-  const outT  = document.getElementById('outTo').value;
-  const retF  = document.getElementById('retFrom').value;
-  const retT  = document.getElementById('retTo').value;
-  const configured = !!email;
-  document.getElementById('settingsSummary').textContent = configured
-    ? `${from}↔${to} · ${outF}–${outT} / ${retF}–${retT}`
-    : 'not configured';
-  // Auto-collapse when configured
-  if (configured) {
-    document.getElementById('settingsPanel').classList.remove('open');
-    document.getElementById('settingsArrow').textContent = '▸';
-  } else {
-    document.getElementById('settingsPanel').classList.add('open');
-    document.getElementById('settingsArrow').textContent = '▾';
-  }
-}
-
-function toggleSettings() {
-  const panel = document.getElementById('settingsPanel');
-  const arrow = document.getElementById('settingsArrow');
-  const open  = panel.classList.toggle('open');
-  arrow.textContent = open ? '▾' : '▸';
-}
-
-function clearCreds() {
-  ['hsp_email','hsp_pass'].forEach(k => localStorage.removeItem(k));
-  document.getElementById('nrEmail').value = '';
-  document.getElementById('nrPass').value  = '';
-  updateSettingsSummary();
-}
-
-let maxJourneyMins = 999;
-
-const LOCAL_PROXY  = 'http://localhost:8787';
-const REMOTE_PROXY = 'https://slow-ant-15.stevew-web.deno.net';
-let   WORKER_BASE  = REMOTE_PROXY; // updated after probe below
-
-// Prefer the local proxy (fast, home network) if it's running
-fetch(LOCAL_PROXY + '/serviceMetrics', { method: 'OPTIONS' })
-  .then(() => { WORKER_BASE = LOCAL_PROXY; console.log('Using local proxy'); })
-  .catch(() => { console.log('Using remote proxy'); });
-
-// ── Mock data ──────────────────────────────────────────────────────────────
-const MOCK_OUT = [
-  { dep:'07:24', arrSched:'08:27', arrActual:'08:58', delayMins:31, op:'Great Western Railway' },
-  { dep:'07:54', arrSched:'08:57', arrActual:'09:22', delayMins:25, op:'Great Western Railway' },
-  { dep:'08:15', arrSched:'09:18', arrActual:'09:36', delayMins:18, op:'Great Western Railway' },
-  { dep:'08:45', arrSched:'09:48', arrActual:'10:02', delayMins:14, op:'Great Western Railway' },
-  { dep:'09:15', arrSched:'10:18', arrActual:'10:28', delayMins:10, op:'Great Western Railway' },
-];
-const MOCK_RET = [
-  { dep:'17:03', arrSched:'18:06', arrActual:'18:49', delayMins:43, op:'Great Western Railway' },
-  { dep:'17:33', arrSched:'18:36', arrActual:'19:12', delayMins:36, op:'Great Western Railway' },
-  { dep:'18:03', arrSched:'19:06', arrActual:'19:32', delayMins:26, op:'Great Western Railway' },
-  { dep:'18:33', arrSched:'19:36', arrActual:'19:52', delayMins:16, op:'Great Western Railway' },
-  { dep:'19:03', arrSched:'20:06', arrActual:'20:19', delayMins:13, op:'Great Western Railway' },
+const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri'];
+const SCENARIOS = [
+  { key: 'am_direct',   label: 'AM direct',   dir: 'DID → PAD' },
+  { key: 'am_stopping', label: 'AM stopping', dir: 'DID → PAD' },
+  { key: 'pm_direct',   label: 'PM direct',   dir: 'PAD → DID' },
+  { key: 'pm_stopping', label: 'PM stopping', dir: 'PAD → DID' },
 ];
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-const fmt4 = t => (!t||t.length<4) ? (t||'—') : t.slice(0,2)+':'+t.slice(2,4);
-const toMins = s => { if(!s)return 0; const p=(s.includes(':')?s.split(':'):[s.slice(0,2),s.slice(2,4)]); return +p[0]*60+ +p[1]; };
-const diffMins = (a,b) => toMins(b)-toMins(a);
+// ─── Helpers ───────────────────────────────────────────────────────────────
+const tier = d => d >= 60 ? 't3' : d >= 30 ? 't2' : d >= 15 ? 't1' : '';
+const tocName = code => TOC_MAP[code] || code || 'Rail service';
 
-function journeyMinsFmt(dep, arr) {
-  // dep/arr already formatted "HH:MM"
-  return toMins(arr) - toMins(dep);
+function isoWeekStart(isoDate) {
+  // Monday of the week containing this date
+  const d = new Date(isoDate + 'T12:00:00');
+  const dow = d.getDay() || 7;          // 1-7, Mon=1
+  d.setDate(d.getDate() - (dow - 1));
+  return d.toISOString().split('T')[0];
 }
 
-function fmtDate(d) {
-  return new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+function fmtDate(isoDate, opts) {
+  return new Date(isoDate + 'T12:00:00').toLocaleDateString('en-GB',
+    opts || { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function dayType(dateStr) {
-  const dow = new Date(dateStr+'T12:00:00').getDay();
-  if (dow===6) return 'SATURDAY';
-  if (dow===0) return 'SUNDAY';
-  return 'WEEKDAY';
-}
-
-function authHeader(e,p) { return 'Basic '+btoa(e+':'+p); }
-
-function showErr(m)  { const el=document.getElementById('errMsg');  el.textContent=m; el.classList.add('on'); }
-function hideErr()   { document.getElementById('errMsg').classList.remove('on'); }
-function showInfo(m) { const el=document.getElementById('infoMsg'); el.innerHTML=m;  el.classList.add('on'); }
-function hideInfo()  { document.getElementById('infoMsg').classList.remove('on'); }
-
-function setLoading(listId, loaderId, on) {
-  document.getElementById(listId).innerHTML='';
-  document.getElementById(loaderId).classList.toggle('on',on);
-}
-
-function setFilter(mins, btn) {
-  maxJourneyMins = mins;
-  document.querySelectorAll('.pill').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-}
-
-// ── Render ─────────────────────────────────────────────────────────────────
-function rankClass(i)   { return ['rank-1','rank-2','rank-3'][i]||''; }
-function delayClass(i)  { return ['dm-1','dm-2','dm-3','dm-n'][Math.min(i,3)]; }
-function actualClass(i) { return ['act-1','act-2','act-3','act-n'][Math.min(i,3)]; }
-
-function renderList(listId, trains) {
-  const el = document.getElementById(listId);
-  const shown = trains
-    .filter(t => journeyMinsFmt(t.dep, t.arrSched) <= maxJourneyMins)
-    .sort((a,b) => b.delayMins-a.delayMins)
-    .slice(0,5);
-
-  if (!shown.length) {
-    el.innerHTML=`<div class="empty"><div class="icon">🚆</div>No delayed trains found<br>matching your filters.</div>`;
-    return;
-  }
-
-  el.innerHTML = shown.map((t,i) => `
-    <div class="train-card">
-      <div class="rank ${rankClass(i)}">${i+1}</div>
-      <div>
-        <div class="train-times">
-          <span class="dep">${t.dep}</span>
-          <span class="sched">→ sched ${t.arrSched}</span>
-          <span class="${actualClass(i)}">actual ${t.arrActual}</span>
-        </div>
-        <div class="train-meta"><span class="op">${t.op}</span></div>
-      </div>
-      <div class="delay-badge">
-        <div class="delay-mins ${delayClass(i)}">+${t.delayMins}</div>
-        <div class="delay-label">mins late</div>
-      </div>
-    </div>`).join('');
-}
-
-// ── HSP API ────────────────────────────────────────────────────────────────
-async function hspPost(endpoint, body, auth) {
-  // endpoint is e.g. 'serviceMetrics' or 'serviceDetails'
-  const path = endpoint.split('/').pop();
-  const url  = `${WORKER_BASE}/${path}`;
-  const res = await fetch(url, {
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'Authorization': auth,
-    },
-    body: JSON.stringify(body)
+function fmtUpdated(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('en-GB', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
   });
-  if (res.status===401) throw new Error('Invalid credentials (401) — check your email and password');
-  if (res.status===403) throw new Error('Access denied (403) — make sure HSP is enabled on your account');
-  if (!res.ok) throw new Error(`API error: HTTP ${res.status}`);
-  return res.json();
 }
 
-async function fetchDelays(from, to, date, auth, fromTime='0600', toTime='1000') {
-  const metricsBody = {
-    from_loc:  from,
-    to_loc:    to,
-    from_time: fromTime,
-    to_time:   toTime,
-    from_date: date,
-    to_date:   date,
-    days:      dayType(date)
+function scenarioLabel(key) {
+  const s = SCENARIOS.find(s => s.key === key);
+  return s ? s.label : key;
+}
+
+// ─── Week grouping ─────────────────────────────────────────────────────────
+function groupIntoWeeks(days) {
+  const byWeek = {};
+  for (const [isoDate, scenarios] of Object.entries(days)) {
+    const weekStart = isoWeekStart(isoDate);
+    if (!byWeek[weekStart]) byWeek[weekStart] = { week_of: weekStart, days: {} };
+    byWeek[weekStart].days[isoDate] = scenarios;
+  }
+  return Object.values(byWeek).sort((a, b) => b.week_of.localeCompare(a.week_of));
+}
+
+function weekSummary(week) {
+  let worst = null, lateCount = 0;
+  for (const [isoDate, scenarios] of Object.entries(week.days)) {
+    for (const s of SCENARIOS) {
+      const trains = scenarios[s.key] || [];
+      if (trains.length > 0) lateCount++;
+      if (trains[0] && (!worst || trains[0].delay > worst.delay)) {
+        worst = { delay: trains[0].delay, date: isoDate, scenarioKey: s.key };
+      }
+    }
+  }
+  if (!worst) return { worst: null, lateCount: 0, text: 'No trains >15m late this week' };
+  const dayName = DAY_LABELS[new Date(worst.date + 'T12:00:00').getDay() - 1] || '';
+  return {
+    worst, lateCount,
+    text: `Worst · ${dayName} ${scenarioLabel(worst.scenarioKey)} +${worst.delay}m · ${lateCount} late scenario${lateCount === 1 ? '' : 's'}`
   };
-
-  const metrics = await hspPost('serviceMetrics', metricsBody, auth);
-  const services = metrics?.Services || [];
-  if (!services.length) return [];
-
-  const results = [];
-
-  // Fetch details for each service (limit to 20 to avoid hammering API)
-  const toFetch = services.slice(0,20);
-
-  await Promise.allSettled(toFetch.map(async svc => {
-    try {
-      const rid = svc.serviceAttributesMetrics?.rids?.[0];
-      if (!rid) return;
-
-      const detail = await hspPost('serviceDetails', { rid }, auth);
-      const locs   = detail?.serviceAttributesDetails?.locations || [];
-
-      const originLoc = locs.find(l => l.location === from);
-      const destLoc   = locs.find(l => l.location === to);
-      if (!originLoc || !destLoc) return;
-
-      const depSched  = originLoc.gbtt_ptd || originLoc.gbtt_pta || '';
-      const arrSched  = destLoc.gbtt_pta   || destLoc.gbtt_ptd   || '';
-      const arrActual = destLoc.actual_ta  || destLoc.actual_td  || arrSched;
-
-      const delay = diffMins(arrSched, arrActual);
-      if (delay <= 0) return; // on time or early
-
-      const jm = diffMins(depSched, arrSched);
-      if (jm <= 0 || jm > 300) return;
-
-      // Map TOC code to name
-      const tocMap = {
-        'GW':'Great Western Railway','GX':'Gatwick Express','SE':'Southeastern',
-        'SN':'Southern','TL':'Thameslink','LM':'West Midlands Trains',
-        'VT':'Avanti West Coast','XC':'CrossCountry','EM':'East Midlands Railway',
-        'AW':'Transport for Wales','SR':'ScotRail','HX':'Heathrow Express',
-        'CC':'c2c','CS':'Caledonian Sleeper','GC':'Grand Central',
-        'HT':'Hull Trains','IL':'Island Line','LD':'Lumo',
-        'LE':'Greater Anglia','LO':'London Overground','LT':'London Underground',
-        'ME':'Merseyrail','NT':'Northern','NY':'North Yorkshire Moors Railway',
-        'SW':'South Western Railway','TP':'TransPennine Express','TW':'Tyne & Wear Metro',
-        'ZZ':'Unknown'
-      };
-      const tocCode = svc.serviceAttributesMetrics?.toc_code || detail?.serviceAttributesDetails?.toc_code || '';
-      const op = tocMap[tocCode] || tocCode || 'Rail Service';
-
-      results.push({
-        dep:       fmt4(depSched),
-        arrSched:  fmt4(arrSched),
-        arrActual: fmt4(arrActual),
-        delayMins: delay,
-        op
-      });
-    } catch(e) { /* skip individual service errors silently */ }
-  }));
-
-  return results;
 }
 
-// ── Main ───────────────────────────────────────────────────────────────────
-async function search() {
-  hideErr(); hideInfo();
+// ─── Render: week card ─────────────────────────────────────────────────────
+function renderWeek(week, expanded) {
+  const summary = weekSummary(week);
+  const weekId = 'w-' + week.week_of;
+  return `
+    <div class="week ${expanded ? 'expanded' : ''}" id="${weekId}" data-week="${week.week_of}">
+      <div class="week-head" data-action="toggle" data-week="${week.week_of}">
+        <div class="week-head-left">
+          <span class="caret">▸</span>
+          <span class="week-title">W/c ${fmtDate(week.week_of, { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+        </div>
+        <div class="week-summary">
+          <span class="worst">${summary.text}</span>
+        </div>
+      </div>
+      <div class="week-body">
+        ${renderDesktopGrid(week)}
+        ${renderMobileView(week)}
+        ${renderLegend()}
+        <div class="detail" data-detail-for="${week.week_of}">
+          <div class="detail-hint">Click any cell to see train details.</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
-  const from  = document.getElementById('fromCRS').value.trim().toUpperCase();
-  const to    = document.getElementById('toCRS').value.trim().toUpperCase();
-  const date  = document.getElementById('journeyDate').value;
-  const email = document.getElementById('nrEmail').value.trim();
-  const pass  = document.getElementById('nrPass').value;
+// ─── Render: desktop grid ─────────────────────────────────────────────────
+function renderDesktopGrid(week) {
+  const weekdays = buildWeekdays(week.week_of);
+  let html = '<div class="view-desktop"><div class="grid">';
 
-  if (!from||!to||!date)            { showErr('Please fill in From, To and Date.'); return; }
-  if (from.length!==3||to.length!==3) { showErr('Station codes must be exactly 3 letters (e.g. DID, PAD).'); return; }
+  html += '<div class="g-label-col"></div>';
+  weekdays.forEach(d => {
+    html += `<div class="g-day">${d.label}</div>`;
+  });
+  html += '<div class="g-label-col"></div>';
+  weekdays.forEach(() => {
+    html += '<div class="g-dir">Out</div><div class="g-dir">In</div>';
+  });
 
-  document.getElementById('outRoute').textContent = `${from} → ${to}`;
-  document.getElementById('retRoute').textContent = `${to} → ${from}`;
-  const df = fmtDate(date);
-  document.getElementById('outBadge').textContent = df;
-  document.getElementById('retBadge').textContent = df;
+  const sections = [
+    { label: 'Direct trains · top 3', out: 'am_direct',   in: 'pm_direct'   },
+    { label: 'Stopping trains · top 3', out: 'am_stopping', in: 'pm_stopping' },
+  ];
 
-  // No credentials → demo mode
-  if (!email || !pass) {
-    showInfo('No credentials entered — showing <b>demo data</b>. Add your National Rail Data Portal email &amp; password above for real delays.');
-    document.getElementById('statusBar').innerHTML = `Demo mode — <b>${from} ↔ ${to}</b>`;
-    renderList('outList', MOCK_OUT);
-    renderList('retList', MOCK_RET);
+  sections.forEach((sec, si) => {
+    html += `<div class="g-section ${si === 0 ? 'first' : ''}">${sec.label}</div>`;
+    for (let rank = 0; rank < 3; rank++) {
+      html += '<div class="g-label-col"></div>';
+      weekdays.forEach(d => {
+        html += renderCell(week, d.iso, sec.out, rank);
+        html += renderCell(week, d.iso, sec.in,  rank);
+      });
+    }
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+function renderCell(week, isoDate, scenarioKey, rank) {
+  const trains = (week.days[isoDate] && week.days[isoDate][scenarioKey]) || [];
+  if (trains.length <= rank) return '<div class="empty">—</div>';
+  const t = trains[rank];
+  const extra = (rank === 2 && trains.length > 3) ? `<span class="more">+${trains.length - 3}</span>` : '';
+  return `<div class="cell ${tier(t.delay)}" data-scope="${isoDate}|${scenarioKey}"
+           data-week="${week.week_of}">
+           +${t.delay}m<span class="dep">${t.dep}</span>${extra}
+         </div>`;
+}
+
+// ─── Render: mobile day-first view ─────────────────────────────────────────
+function renderMobileView(week) {
+  const weekdays = buildWeekdays(week.week_of);
+  // Find first day with any data for default tab
+  let defaultDay = weekdays[0].iso;
+  for (const d of weekdays) {
+    if (week.days[d.iso] && SCENARIOS.some(s => (week.days[d.iso][s.key] || []).length > 0)) {
+      defaultDay = d.iso;
+      break;
+    }
+  }
+
+  let html = '<div class="view-mobile">';
+  html += '<div class="day-tabs">';
+  weekdays.forEach(d => {
+    const scenarios = week.days[d.iso] || {};
+    const allTrains = SCENARIOS.flatMap(s => scenarios[s.key] || []);
+    const worstDelay = allTrains.reduce((m, t) => Math.max(m, t.delay), 0);
+    const dotClass = worstDelay > 0 ? ` worst-${tier(worstDelay)}` : '';
+    const dot = worstDelay > 0 ? `<span class="dot${dotClass}"></span>` : '';
+    html += `<button class="day-tab ${d.iso === defaultDay ? 'active' : ''}"
+              data-action="day-tab" data-day="${d.iso}" data-week="${week.week_of}">
+              ${d.label}${dot}
+            </button>`;
+  });
+  html += '</div>';
+
+  weekdays.forEach(d => {
+    const hidden = d.iso === defaultDay ? '' : 'style="display:none"';
+    html += `<div class="mobile-day" data-day="${d.iso}" ${hidden}>`;
+    SCENARIOS.forEach(s => {
+      const trains = (week.days[d.iso] && week.days[d.iso][s.key]) || [];
+      html += `<div class="scenario">
+        <div class="scenario-head">
+          <span>${s.label}</span>
+          <span class="dir">${s.dir}</span>
+        </div>`;
+      if (!trains.length) {
+        html += '<div class="scenario-empty">No trains >15m late</div>';
+      } else {
+        html += '<div class="scenario-rows">';
+        trains.slice(0, 3).forEach(t => {
+          html += `<div class="srow ${tier(t.delay)}"
+                    data-scope="${d.iso}|${s.key}" data-week="${week.week_of}">
+            <div class="dm">+${t.delay}m</div>
+            <div class="dep-info">dep ${t.dep} · arr ${t.arr_actual}</div>
+            <div class="toc">${t.toc || ''}</div>
+          </div>`;
+        });
+        if (trains.length > 3) {
+          html += `<div class="scenario-empty">+${trains.length - 3} more · tap any train for full list</div>`;
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+// ─── Render: legend + detail ───────────────────────────────────────────────
+function renderLegend() {
+  return `
+    <div class="legend">
+      <span><span class="sw" style="background:var(--tier1-bg)"></span>15–29m</span>
+      <span><span class="sw" style="background:var(--tier2-bg)"></span>30–59m</span>
+      <span><span class="sw" style="background:var(--tier3-bg)"></span>60m+</span>
+      <span class="legend-hint">Tap a cell for train details</span>
+    </div>
+  `;
+}
+
+function renderDetail(week, scope) {
+  const [isoDate, scenarioKey] = scope.split('|');
+  const trains = (week.days[isoDate] && week.days[isoDate][scenarioKey]) || [];
+  const s = SCENARIOS.find(x => x.key === scenarioKey);
+  const dayName = DAY_LABELS[new Date(isoDate + 'T12:00:00').getDay() - 1] || '';
+  if (!trains.length) {
+    return `<div class="detail-hint">${dayName} ${s.label} · no trains >15m late</div>`;
+  }
+  let html = `<div class="detail-head">${dayName} ${s.label} · ${s.dir} · ${trains.length} train${trains.length === 1 ? '' : 's'} >15m late</div>`;
+  trains.forEach(t => {
+    html += `<div class="detail-row">
+      <div class="d ${tier(t.delay)}">+${t.delay}m</div>
+      <div class="m">dep ${t.dep} · sched arr ${t.arr_sched} · actual ${t.arr_actual}</div>
+      <div class="op">${tocName(t.toc)}</div>
+    </div>`;
+  });
+  return html;
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+function buildWeekdays(weekStart) {
+  const start = new Date(weekStart + 'T12:00:00');
+  return DAY_LABELS.map((label, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return { label, iso: d.toISOString().split('T')[0] };
+  });
+}
+
+// ─── Event handling ────────────────────────────────────────────────────────
+const STATE = { weeks: [] };
+
+function handleClick(e) {
+  const toggle = e.target.closest('[data-action="toggle"]');
+  if (toggle) {
+    const w = document.getElementById('w-' + toggle.dataset.week);
+    if (w) w.classList.toggle('expanded');
+    return;
+  }
+  const tab = e.target.closest('[data-action="day-tab"]');
+  if (tab) {
+    const weekEl = document.getElementById('w-' + tab.dataset.week);
+    weekEl.querySelectorAll('.day-tab').forEach(t => t.classList.toggle('active', t === tab));
+    weekEl.querySelectorAll('.mobile-day').forEach(d => {
+      d.style.display = (d.dataset.day === tab.dataset.day) ? '' : 'none';
+    });
+    return;
+  }
+  const cell = e.target.closest('[data-scope]');
+  if (cell) {
+    const weekKey = cell.dataset.week;
+    const scope = cell.dataset.scope;
+    const week = STATE.weeks.find(w => w.week_of === weekKey);
+    if (!week) return;
+    const weekEl = document.getElementById('w-' + weekKey);
+    weekEl.querySelectorAll('.cell.active, .srow.active').forEach(el =>
+      el.classList.remove('active'));
+    cell.classList.add('active');
+    const detailEl = weekEl.querySelector(`[data-detail-for="${weekKey}"]`);
+    detailEl.innerHTML = renderDetail(week, scope);
+  }
+}
+
+// ─── Bootstrap ─────────────────────────────────────────────────────────────
+async function boot() {
+  try {
+    const resp = await fetch('./data.json', { cache: 'no-store' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    render(data);
+  } catch (e) {
+    showEmptyState(e);
+  }
+}
+
+function render(data) {
+  document.getElementById('updated').innerHTML =
+    `Last updated · <b>${fmtUpdated(data.last_updated)}</b>`;
+
+  const weeks = groupIntoWeeks(data.days || {}).slice(0, 5);
+  STATE.weeks = weeks;
+
+  if (!weeks.length) {
+    showEmptyState(null);
     return;
   }
 
-  // Live mode
-  document.getElementById('statusBar').innerHTML = `Fetching HSP data for <b>${from} ↔ ${to}</b> on <b>${df}</b>… (HSP API can be slow — please wait)`;
-  setLoading('outList','outLoader',true);
-  setLoading('retList','retLoader',true);
+  const html = weeks.map((w, i) => renderWeek(w, i === 0)).join('');
+  document.getElementById('report').innerHTML = html;
 
-  const auth = authHeader(email, pass);
-
-  try {
-    LS.save();
-    const outFrom = document.getElementById('outFrom').value.replace(':','');
-    const outTo   = document.getElementById('outTo').value.replace(':','');
-    const retFrom = document.getElementById('retFrom').value.replace(':','');
-    const retTo   = document.getElementById('retTo').value.replace(':','');
-
-    const [outTrains, retTrains] = await Promise.all([
-      fetchDelays(from, to, date, auth, outFrom, outTo),
-      fetchDelays(to, from, date, auth, retFrom, retTo)
-    ]);
-
-    setLoading('outList','outLoader',false);
-    setLoading('retList','retLoader',false);
-
-    if (!outTrains.length && !retTrains.length) {
-      showInfo(`No delayed services found for <b>${from} ↔ ${to}</b> on <b>${df}</b>. ` +
-        `Check the date isn't a weekend when fewer services run, or try different CRS codes.`);
-    }
-
-    renderList('outList', outTrains);
-    renderList('retList', retTrains);
-
-    const dot = document.getElementById('credDot');
-    dot.classList.add('ok');
-    document.getElementById('credStatus').textContent = 'National Rail Data Portal — connected';
-    document.getElementById('statusBar').innerHTML = `Live HSP data — <b>${from} ↔ ${to}</b> on <b>${df}</b>`;
-
-  } catch(e) {
-    setLoading('outList','outLoader',false);
-    setLoading('retList','retLoader',false);
-    showErr(e.message);
-    document.getElementById('statusBar').textContent = 'Error loading data.';
-    document.getElementById('credDot').classList.add('err');
+  // Auto-select worst scenario in the current week so detail panel is populated
+  const first = weeks[0];
+  const summary = weekSummary(first);
+  if (summary.worst) {
+    const scope = `${summary.worst.date}|${summary.worst.scenarioKey}`;
+    const firstCell = document.querySelector(
+      `#w-${first.week_of} .cell[data-scope="${scope}"], ` +
+      `#w-${first.week_of} .srow[data-scope="${scope}"]`);
+    if (firstCell) firstCell.click();
   }
 }
 
-// Initial demo render
-renderList('outList', MOCK_OUT);
-renderList('retList', MOCK_RET);
+function showEmptyState(err) {
+  document.getElementById('updated').textContent = err ? 'Error loading data' : '';
+  document.getElementById('report').innerHTML = `
+    <div class="notice">
+      ${err ? '<b>Could not load data.json</b><br>' : '<b>No data yet</b><br>'}
+      ${err ? `<code>${err.message}</code><br><br>` : ''}
+      Run <code>python3 fetcher.py</code> on the Mac where the fetcher is installed,
+      then refresh this page. The fetcher populates <code>data.json</code> with
+      the last 5 weeks of weekday commute data.
+    </div>
+  `;
+}
+
+document.addEventListener('click', handleClick);
+boot();
 </script>
 </body>
 </html>
