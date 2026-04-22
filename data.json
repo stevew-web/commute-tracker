@@ -1,0 +1,528 @@
+{
+  "days": {
+    "2026-03-18": {
+      "am_direct": [
+        {
+          "arr_actual": "09:51",
+          "arr_sched": "09:34",
+          "delay": 17,
+          "dep": "08:57",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [],
+      "pm_direct": [
+        {
+          "arr_actual": "17:28",
+          "arr_sched": "17:10",
+          "delay": 18,
+          "dep": "16:33",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "16:52",
+          "arr_sched": "16:36",
+          "delay": 16,
+          "dep": "16:00",
+          "toc": "GW"
+        }
+      ],
+      "pm_stopping": []
+    },
+    "2026-03-19": {
+      "am_direct": [
+        {
+          "arr_actual": "08:44",
+          "arr_sched": "08:26",
+          "delay": 18,
+          "dep": "07:45",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "09:51",
+          "arr_sched": "09:34",
+          "delay": 17,
+          "dep": "08:57",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [
+        {
+          "arr_actual": "08:38",
+          "arr_sched": "08:23",
+          "delay": 15,
+          "dep": "07:17",
+          "toc": "GW"
+        }
+      ],
+      "pm_direct": [
+        {
+          "arr_actual": "18:29",
+          "arr_sched": "17:55",
+          "delay": 34,
+          "dep": "17:18",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "18:07",
+          "arr_sched": "17:37",
+          "delay": 30,
+          "dep": "17:00",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "18:38",
+          "arr_sched": "18:09",
+          "delay": 29,
+          "dep": "17:32",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "17:38",
+          "arr_sched": "17:10",
+          "delay": 28,
+          "dep": "16:33",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "19:35",
+          "arr_sched": "19:10",
+          "delay": 25,
+          "dep": "18:34",
+          "toc": "GW"
+        }
+      ],
+      "pm_stopping": [
+        {
+          "arr_actual": "20:01",
+          "arr_sched": "19:27",
+          "delay": 34,
+          "dep": "18:20",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "18:12",
+          "arr_sched": "17:54",
+          "delay": 18,
+          "dep": "16:50",
+          "toc": "GW"
+        }
+      ]
+    },
+    "2026-03-20": {
+      "am_direct": [],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-03-23": {
+      "am_direct": [],
+      "am_stopping": [
+        {
+          "arr_actual": "10:06",
+          "arr_sched": "09:50",
+          "delay": 16,
+          "dep": "08:38",
+          "toc": "GW"
+        }
+      ],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-03-24": {
+      "am_direct": [
+        {
+          "arr_actual": "09:54",
+          "arr_sched": "09:34",
+          "delay": 20,
+          "dep": "08:57",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-03-25": {
+      "am_direct": [],
+      "am_stopping": [
+        {
+          "arr_actual": "10:05",
+          "arr_sched": "09:50",
+          "delay": 15,
+          "dep": "08:38",
+          "toc": "GW"
+        }
+      ],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-03-26": {
+      "am_direct": [],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-03-27": {
+      "am_direct": [
+        {
+          "arr_actual": "06:39",
+          "arr_sched": "06:12",
+          "delay": 27,
+          "dep": "05:33",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "06:44",
+          "arr_sched": "06:29",
+          "delay": 15,
+          "dep": "05:46",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-03-30": {
+      "am_direct": [],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-03-31": {
+      "am_direct": [
+        {
+          "arr_actual": "08:37",
+          "arr_sched": "07:57",
+          "delay": 40,
+          "dep": "07:14",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-04-01": {
+      "am_direct": [],
+      "am_stopping": [],
+      "pm_direct": [
+        {
+          "arr_actual": "18:25",
+          "arr_sched": "18:09",
+          "delay": 16,
+          "dep": "17:32",
+          "toc": "GW"
+        }
+      ],
+      "pm_stopping": [
+        {
+          "arr_actual": "18:09",
+          "arr_sched": "17:54",
+          "delay": 15,
+          "dep": "16:50",
+          "toc": "GW"
+        }
+      ]
+    },
+    "2026-04-02": {
+      "am_direct": [],
+      "am_stopping": [],
+      "pm_direct": [
+        {
+          "arr_actual": "16:31",
+          "arr_sched": "16:10",
+          "delay": 21,
+          "dep": "15:32",
+          "toc": "GW"
+        }
+      ],
+      "pm_stopping": []
+    },
+    "2026-04-03": {
+      "am_direct": [],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-04-06": {
+      "am_direct": [
+        {
+          "arr_actual": "08:26",
+          "arr_sched": "07:57",
+          "delay": 29,
+          "dep": "07:14",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-04-07": {
+      "am_direct": [
+        {
+          "arr_actual": "06:30",
+          "arr_sched": "06:12",
+          "delay": 18,
+          "dep": "05:33",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-04-08": {
+      "am_direct": [
+        {
+          "arr_actual": "07:14",
+          "arr_sched": "06:57",
+          "delay": 17,
+          "dep": "06:19",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "08:24",
+          "arr_sched": "08:09",
+          "delay": 15,
+          "dep": "07:27",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "09:20",
+          "arr_sched": "09:05",
+          "delay": 15,
+          "dep": "08:27",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [
+        {
+          "arr_actual": "09:16",
+          "arr_sched": "08:53",
+          "delay": 23,
+          "dep": "07:38",
+          "toc": "GW"
+        }
+      ],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-04-09": {
+      "am_direct": [
+        {
+          "arr_actual": "08:58",
+          "arr_sched": "08:40",
+          "delay": 18,
+          "dep": "07:57",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": [
+        {
+          "arr_actual": "20:09",
+          "arr_sched": "19:54",
+          "delay": 15,
+          "dep": "18:50",
+          "toc": "GW"
+        }
+      ]
+    },
+    "2026-04-10": {
+      "am_direct": [],
+      "am_stopping": [],
+      "pm_direct": [
+        {
+          "arr_actual": "16:32",
+          "arr_sched": "16:10",
+          "delay": 22,
+          "dep": "15:32",
+          "toc": "GW"
+        }
+      ],
+      "pm_stopping": []
+    },
+    "2026-04-13": {
+      "am_direct": [
+        {
+          "arr_actual": "08:49",
+          "arr_sched": "07:57",
+          "delay": 52,
+          "dep": "07:14",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-04-14": {
+      "am_direct": [
+        {
+          "arr_actual": "09:29",
+          "arr_sched": "09:05",
+          "delay": 24,
+          "dep": "08:27",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "09:55",
+          "arr_sched": "09:34",
+          "delay": 21,
+          "dep": "08:57",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "09:06",
+          "arr_sched": "08:51",
+          "delay": 15,
+          "dep": "08:10",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [],
+      "pm_direct": [
+        {
+          "arr_actual": "19:44",
+          "arr_sched": "19:10",
+          "delay": 34,
+          "dep": "18:34",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "19:58",
+          "arr_sched": "19:38",
+          "delay": 20,
+          "dep": "19:00",
+          "toc": "GW"
+        }
+      ],
+      "pm_stopping": []
+    },
+    "2026-04-15": {
+      "am_direct": [],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-04-16": {
+      "am_direct": [
+        {
+          "arr_actual": "06:56",
+          "arr_sched": "06:27",
+          "delay": 29,
+          "dep": "05:46",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [],
+      "pm_direct": [],
+      "pm_stopping": []
+    },
+    "2026-04-17": {
+      "am_direct": [],
+      "am_stopping": [],
+      "pm_direct": [
+        {
+          "arr_actual": "20:35",
+          "arr_sched": "20:07",
+          "delay": 28,
+          "dep": "19:30",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "20:25",
+          "arr_sched": "20:04",
+          "delay": 21,
+          "dep": "19:23",
+          "toc": "GW"
+        }
+      ],
+      "pm_stopping": []
+    },
+    "2026-04-20": {
+      "am_direct": [
+        {
+          "arr_actual": "08:28",
+          "arr_sched": "07:57",
+          "delay": 31,
+          "dep": "07:14",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "08:37",
+          "arr_sched": "08:09",
+          "delay": 28,
+          "dep": "07:27",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "08:51",
+          "arr_sched": "08:26",
+          "delay": 25,
+          "dep": "07:45",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "09:14",
+          "arr_sched": "08:51",
+          "delay": 23,
+          "dep": "08:10",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "09:56",
+          "arr_sched": "09:34",
+          "delay": 22,
+          "dep": "08:57",
+          "toc": "GW"
+        },
+        {
+          "arr_actual": "08:57",
+          "arr_sched": "08:40",
+          "delay": 17,
+          "dep": "07:57",
+          "toc": "GW"
+        }
+      ],
+      "am_stopping": [
+        {
+          "arr_actual": "09:10",
+          "arr_sched": "08:53",
+          "delay": 17,
+          "dep": "07:38",
+          "toc": "GW"
+        }
+      ],
+      "pm_direct": [
+        {
+          "arr_actual": "20:15",
+          "arr_sched": "19:57",
+          "delay": 18,
+          "dep": "19:12",
+          "toc": "GW"
+        }
+      ],
+      "pm_stopping": []
+    },
+    "2026-04-21": {
+      "am_direct": [],
+      "am_stopping": [],
+      "pm_direct": [
+        {
+          "arr_actual": "20:39",
+          "arr_sched": "20:07",
+          "delay": 32,
+          "dep": "19:30",
+          "toc": "GW"
+        }
+      ],
+      "pm_stopping": []
+    }
+  },
+  "last_updated": "2026-04-22T10:26:56+00:00"
+}
