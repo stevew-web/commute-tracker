@@ -22,6 +22,7 @@ Usage:
 import argparse
 import base64
 import json
+import ssl
 import subprocess
 import sys
 import time
@@ -29,6 +30,12 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib import error, request
+
+# macOS Python doesn't have system CA certs configured; disable verification
+# for the HSP API (hsp-prod.rockshore.net — internal National Rail service).
+_SSL_CTX = ssl.create_default_context()
+_SSL_CTX.check_hostname = False
+_SSL_CTX.verify_mode = ssl.CERT_NONE
 
 # ─── Config ─────────────────────────────────────────────────────────────────
 REPO_DIR   = Path(__file__).resolve().parent
@@ -98,7 +105,7 @@ def hsp_post(url, body, auth, timeout=60, retries=2):
                 'Content-Type': 'application/json',
                 'Authorization': auth,
             })
-            with request.urlopen(req, timeout=timeout) as resp:
+            with request.urlopen(req, timeout=timeout, context=_SSL_CTX) as resp:
                 time.sleep(INTER_REQUEST_DELAY)
                 return json.loads(resp.read().decode())
         except error.HTTPError as e:
